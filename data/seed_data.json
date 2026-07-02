@@ -1,0 +1,54 @@
+[
+  {
+    "name": "Birth Certificate",
+    "description": "Request or apply for a birth certificate through the government service flow.",
+    "fee": 0,
+    "requirements": [
+      {
+        "name": "Applicant identity details",
+        "description": "Full name, date of birth, and contact information.",
+        "mandatory": true,
+        "needs_upload": false,
+        "order_index": 1
+      },
+      {
+        "name": "Supporting document",
+        "description": "Any required supporting file for the service request.",
+        "mandatory": false,
+        "needs_upload": true,
+        "order_index": 2
+      }
+    ],
+    "steps": [
+      {"order_index": 1, "description": "Confirm the service request and user details."},
+      {"order_index": 2, "description": "Provide required information and documents."},
+      {"order_index": 3, "description": "Submit and track the application."}
+    ]
+  },
+  {
+    "name": "National ID",
+    "description": "Apply for or renew a national identity service request.",
+    "fee": 0,
+    "requirements": [
+      {
+        "name": "Identity details",
+        "description": "Name, national ID number if available, and contact information.",
+        "mandatory": true,
+        "needs_upload": false,
+        "order_index": 1
+      },
+      {
+        "name": "Photo or supporting file",
+        "description": "Upload any required identity support file.",
+        "mandatory": false,
+        "needs_upload": true,
+        "order_index": 2
+      }
+    ],
+    "steps": [
+      {"order_index": 1, "description": "Start the identity service request."},
+      {"order_index": 2, "description": "Submit personal details and any needed files."},
+      {"order_index": 3, "description": "Complete submission and wait for feedback."}
+    ]
+  }
+]
