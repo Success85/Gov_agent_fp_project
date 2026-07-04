@@ -1,3 +1,8 @@
+# ============================================
+# SPRINT 1 SEED DATA has  PLACEHOLDER CONTENT
+# Requirements and steps use temporary data.
+# Replace with Alvin's verified Irembo data
+# ============================================
 import logging
 from app.db.database import SessionLocal, create_tables
 from app.models.user import User
@@ -65,12 +70,12 @@ def seed_services(db):
     """
     services = [
         Service(
-            name="National ID Application",
+            name="Application for National ID",
             name_rw="Gusaba Indangamuntu",
             category="Identification",
             description="Apply for a Rwandan national identity card",
-            fee=0.00,
-            processing_days=3
+            fee=500.00,
+            processing_days=30
         ),
         Service(
             name="Birth Certificate",
@@ -78,7 +83,7 @@ def seed_services(db):
             category="Family",
             description="Apply for an official birth certificate",
             fee=500.00,
-            processing_days=2
+            processing_days=1
         ),
     ]
 
