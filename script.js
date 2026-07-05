@@ -556,3 +556,154 @@ function toggleMic() {
     try { recognizer.start(); } catch (_) {}
   }
 }
+
+/* DOM Helpers */
+function formatTime(date) {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function renderMarkdown(container, text) {
+  text.split(/(\*\*[^*]+\*\*)/g).forEach(part => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      const s = document.createElement('strong');
+      s.textContent = part.slice(2, -2);
+      container.appendChild(s);
+    } else {
+      container.appendChild(document.createTextNode(part));
+    }
+  });
+}
+
+function appendMessage(sender, text, opts = {}) {
+  const msg    = document.createElement('div');
+  msg.className = `msg ${sender}`;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  sender === 'assistant' ? renderMarkdown(bubble, text) : (bubble.textContent = text);
+  msg.appendChild(bubble);
+
+  if (opts.badge !== undefined) {
+    const badge = document.createElement('span');
+    badge.className = `grounding-badge ${opts.badge ? 'verified' : 'general'}`;
+    badge.textContent = opts.badge ? UI[currentLang].badgeVerified : UI[currentLang].badgeGeneral;
+    msg.appendChild(badge);
+  }
+
+  if (sender !== 'system') {
+    const time = document.createElement('span');
+    time.className = 'msg-time';
+    time.textContent = formatTime(new Date());
+    msg.appendChild(time);
+  }
+
+  messagesEl.appendChild(msg);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return msg;
+}
+
+function showTyping() {
+  typingRow.hidden = false;
+  typingRow.removeAttribute('aria-hidden');
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function hideTyping() {
+  typingRow.hidden = true;
+  typingRow.setAttribute('aria-hidden', 'true');
+}
+
+function setStatusBar(online) {
+  backendOnline = online;
+  const indicator = document.querySelector('.status-indicator');
+  if (indicator) {
+    indicator.style.background = online ? 'var(--success)' : '#e8a800';
+  }
+  if (statusText) {
+    statusText.textContent = online
+      ? UI[currentLang].statusOnline
+      : UI[currentLang].statusOffline;
+  }
+}
+
+/* Sidebar */
+function showServiceCard(svc) {
+  const ui = UI[currentLang];
+  const L  = currentLang;
+
+  serviceCard.dataset.serviceId = svc.id;
+  serviceCard.hidden = false;
+  quickPanel.hidden  = true;
+
+  scLabel.textContent         = ui.scLabel;
+  scTitle.textContent         = svc.name[L];
+  scFee.textContent           = Number(svc.fee_rwf).toLocaleString() + ui.feeSuffix;
+  scReqHeading.textContent    = ui.scReqHeading;
+  scStepsHeading.textContent  = ui.scStepsHeading;
+  scSourceText.textContent    = ui.scSource;
+
+  scRequirements.innerHTML = '';
+  svc.requirements.forEach(r => {
+    const li = document.createElement('li');
+    if (!r.mandatory) li.classList.add('optional');
+    li.textContent = (r[L] || r.en) + (r.mandatory ? '' : ` ${ui.optional}`);
+    scRequirements.appendChild(li);
+  });
+
+  scSteps.innerHTML = '';
+  svc.steps.forEach(s => {
+    const li = document.createElement('li');
+    li.textContent = s[L] || s.en;
+    scSteps.appendChild(li);
+  });
+}
+
+function buildQuickList() {
+  quickList.innerHTML = '';
+  Object.values(KB).forEach(svc => {
+    const btn = document.createElement('button');
+    btn.className = 'quick-chip';
+    btn.type      = 'button';
+    btn.setAttribute('role', 'listitem');
+    btn.innerHTML = `${svc.name[currentLang]}<span class="quick-chip-category">${svc.category[currentLang]}</span>`;
+    btn.addEventListener('click', () => {
+      textInput.value = svc.name[currentLang];
+      sendMessage();
+    });
+    quickList.appendChild(btn);
+  });
+}
+
+/* Switching Languages */
+function setLanguage(lang) {
+  currentLang = lang;
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    const active = btn.dataset.lang === lang;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
+  });
+
+  const ui = UI[lang];
+  textInput.placeholder           = ui.placeholder;
+  statusText.textContent          = backendOnline ? ui.statusOnline : ui.statusOffline;
+  quickHeading.textContent        = ui.quickHeading;
+  voicePanelHeading.textContent   = ui.voiceHeading;
+  voicePanelNote.textContent      = ui.voiceNote;
+  infoHeading.textContent         = ui.infoHeading;
+  infoNote.textContent            = ui.infoNote;
+  voiceToggleLabel.textContent    = speakEnabled ? ui.voiceOn : ui.voiceOff;
+
+  buildQuickList();
+  SESSION.updateSessionDisplay();
+
+  if (!serviceCard.hidden) {
+    const id = serviceCard.dataset.serviceId;
+    if (id && KB[id]) showServiceCard(KB[id]);
+  }
+}
