@@ -136,31 +136,37 @@ const API = {
       headers: { 'Content-Type': 'application/json' },
     };
     if (body !== null) opts.body = JSON.stringify(body);
-    const res = await fetch(url, opts);
-    if (!res.ok) {
-      console.warn(`[API] ${method} ${path} → ${res.status}`);
+    try {
+      const res = await fetch(url, opts);
+      if (!res.ok) {
+        console.warn(`[API] ${method} ${path} → ${res.status}`);
+        return null;
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn(`[API] ${method} ${path} failed:`, err.message);
       return null;
     }
-    return res.json();
   },
 
   async _fetchMultipart(path, formData) {
     const url = `${CONFIG.BACKEND_URL}${path}`;
-    const res = await fetch(url, { method: 'POST', body: formData });
-    if (!res.ok) {
+    try {
+      const res = await fetch(url, { method: 'POST', body: formData });
+      if (!res.ok) {
       console.warn(`[API] POST ${path} → ${res.status}`);
       return null;
+      }
+      return res.json();
+    } catch (err) {
+    console.warn(`[API] POST ${path} failed:`, err.message);
+    return null;
     }
-    return res.json();
   },
 
   async checkHealth() {
-    try {
-      const data = await this._fetch('GET', '/health');
-      return data?.status === 'ok';
-    } catch {
-      return false;
-    }
+    const data = await this._fetch('GET', '/health');
+    return data?.status === 'ok';
   },
 
 /* Chat */
