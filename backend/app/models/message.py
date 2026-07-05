@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship, validates
 from datetime import datetime, timezone
-from app.db.database import Base
+from app.db.base import Base
 
 
 class Message(Base):

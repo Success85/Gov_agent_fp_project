@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.orm import relationship, validates
 from datetime import datetime, timezone
 import re
-from app.db.database import Base
+from app.db.base import Base
 
 
 class User(Base):

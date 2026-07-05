@@ -3,7 +3,8 @@ import os
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy.orm import sessionmaker
+from app.db.base import Base
 
 load_dotenv()
 
@@ -20,8 +21,6 @@ engine = create_engine(
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-class Base(DeclarativeBase):
-    pass
 
 def get_db():
     db = SessionLocal()
@@ -29,6 +28,7 @@ def get_db():
         yield db
     finally:
         db.close()
+
 
 def check_db_connection():
     try:
@@ -41,13 +41,18 @@ def check_db_connection():
         logger.error(f"Database connection failed: {e}")
         return False
 
+
 def create_tables():
-    from app.models import user, service, requirement, steps, conversation, message
+    from app.models.user import User
+    from app.models.service import Service
+    from app.models.requirement import Requirement
+    from app.models.steps import Step
+    from app.models.conversation import Conversation
+    from app.models.message import Message
+
     Base.metadata.create_all(bind=engine)
-    logger.info("All database tables created successfully")
+    logger.info(f"Tables created: {list(Base.metadata.tables.keys())}")
 
 
 if __name__ == "__main__":
-    print("Creating database tables...")
     create_tables()
-    print("Done!")
