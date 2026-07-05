@@ -707,3 +707,64 @@ function setLanguage(lang) {
     if (id && KB[id]) showServiceCard(KB[id]);
   }
 }
+
+const messagesEl        = document.getElementById('messages');
+const typingRow         = document.getElementById('typing-row');
+const textInput         = document.getElementById('text-input');
+const sendBtn           = document.getElementById('send-btn');
+const micBtn            = document.getElementById('mic-btn');
+const voiceNoteEl       = document.getElementById('voice-note');
+const statusText        = document.getElementById('status-text');
+const serviceCard       = document.getElementById('service-card');
+const quickPanel        = document.getElementById('quick-panel');
+const quickList         = document.getElementById('quick-list');
+const quickHeading      = document.getElementById('quick-heading');
+const scLabel           = document.getElementById('sc-label');
+const scTitle           = document.getElementById('sc-title');
+const scFee             = document.getElementById('sc-fee');
+const scRequirements    = document.getElementById('sc-requirements');
+const scSteps           = document.getElementById('sc-steps');
+const scReqHeading      = document.getElementById('sc-req-heading');
+const scStepsHeading    = document.getElementById('sc-steps-heading');
+const scSourceText      = document.getElementById('sc-source-text');
+const voiceToggle       = document.getElementById('voice-toggle');
+const voiceToggleLabel  = document.getElementById('voice-toggle-label');
+const voicePanelHeading = document.getElementById('voice-panel-heading');
+const voicePanelNote    = document.getElementById('voice-panel-note');
+const infoHeading       = document.getElementById('info-heading');
+const infoNote          = document.getElementById('info-note');
+
+sendBtn.addEventListener('click', sendMessage);
+
+textInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+textInput.addEventListener('input', () => autoGrow(textInput));
+
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+});
+
+micBtn.addEventListener('click', toggleMic);
+
+voiceToggle.addEventListener('click', () => {
+  speakEnabled = !speakEnabled;
+  voiceToggle.setAttribute('aria-pressed', String(speakEnabled));
+  voiceToggleLabel.textContent = speakEnabled ? UI[currentLang].voiceOn : UI[currentLang].voiceOff;
+  if (!speakEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+});
+
+async function init() {
+  initSpeechRecognition();
+  if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = () => {};
+  const online = await API.checkHealth();
+  setStatusBar(online);
+  await SESSION.initUser();
+  setLanguage('en');
+  appendMessage('assistant', UI.en.greeting);
+
+  SESSION.updateSessionDisplay();
+}
+
+init();
