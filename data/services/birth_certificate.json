@@ -1,26 +1,36 @@
 {
   "name": "Birth Certificate",
-  "description": "Request or apply for a birth certificate through the government service flow.",
-  "fee": 0,
+  "description": "Apply for a Rwandan birth certificate, provided by the Ministry of Local Government (MINALOC) and processed by local authorities at the sector level. The service costs 500 RWF and is usually processed within 1 working day. The application is made online via IremboGov, and the certificate is issued as a downloadable e-certificate with lifetime validity. It can be requested for oneself or on behalf of a child.",
+  "fee": 500,
   "requirements": [
     {
-      "name": "Applicant identity details",
-      "description": "Full name, date of birth, and contact information.",
+      "name": "National ID or Citizen Application Number",
+      "description": "The applicant's National ID number, or a Citizen Application Number for those without a National ID (such as a child). The system uses this to retrieve the applicant's registered details.",
       "mandatory": true,
       "needs_upload": false,
       "order_index": 1
     },
     {
-      "name": "Supporting document",
-      "description": "Any required supporting file for the service request.",
-      "mandatory": false,
-      "needs_upload": true,
+      "name": "Valid phone number",
+      "description": "An active phone number used to receive the billing number and the notification when the certificate is ready.",
+      "mandatory": true,
+      "needs_upload": false,
       "order_index": 2
+    },
+    {
+      "name": "Email address",
+      "description": "An email address used for notifications and, optionally, to receive the issued certificate.",
+      "mandatory": true,
+      "needs_upload": false,
+      "order_index": 3
     }
   ],
   "steps": [
-    {"order_index": 1, "description": "Confirm the service request and user details."},
-    {"order_index": 2, "description": "Provide required information and documents."},
-    {"order_index": 3, "description": "Submit and track the application."}
+    {"order_index": 1, "description": "Log in to IremboGov and select the Birth Certificate service, choosing whether the application is for yourself or a child."},
+    {"order_index": 2, "description": "Enter the National ID or Citizen Application Number; the registered details are retrieved automatically."},
+    {"order_index": 3, "description": "Fill in the processing details, the reason for the request, and select the sector office."},
+    {"order_index": 4, "description": "Verify the information, submit the application, and receive a billing number (starting with 88)."},
+    {"order_index": 5, "description": "Pay the 500 RWF fee using a supported method such as Mobile Money."},
+    {"order_index": 6, "description": "Once the sector Executive Secretary approves it, download the birth certificate from IremboGov."}
   ]
 }
