@@ -488,3 +488,71 @@ const matches  = retrieveServices(raw, currentLang);
   sendBtn.disabled = false;
   textInput.focus();
 }
+
+/* Text-to-Speech */
+let speakEnabled = true;
+
+function speak(text, lang) {
+  if (!speakEnabled || !('speechSynthesis' in window)) return;
+  const clean = text.replace(/\*\*([^*]+)\*\*/g, '$1');
+  try {
+    window.speechSynthesis.cancel();
+    const utter  = new SpeechSynthesisUtterance(clean);
+    utter.lang   = LANG_CODES[lang] || 'en-US';
+    utter.rate   = 0.95;
+    const voices = window.speechSynthesis.getVoices();
+    const match  = voices.find(v => v.lang === utter.lang)
+                || voices.find(v => v.lang.startsWith(lang));
+    if (match) utter.voice = match;
+    window.speechSynthesis.speak(utter);
+  } catch (_) {}
+}
+
+/* Speech-to-text */
+let isRecording = false;
+let recognizer  = null;
+
+function initSpeechRecognition() {
+  const SRImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SRImpl) return;
+
+  recognizer = new SRImpl();
+  recognizer.continuous     = false;
+  recognizer.interimResults = false;
+
+  recognizer.onstart = () => {
+    isRecording = true;
+    micBtn.classList.add('recording');
+    micBtn.setAttribute('aria-pressed', 'true');
+    voiceNoteEl.textContent = UI[currentLang].listening;
+  };
+
+  recognizer.onresult = event => {
+    textInput.value = event.results[0][0].transcript;
+    sendMessage();
+  };
+
+  recognizer.onerror = event => {
+    voiceNoteEl.textContent = event.error;
+  };
+
+  recognizer.onend = () => {
+    isRecording = false;
+    micBtn.classList.remove('recording');
+    micBtn.setAttribute('aria-pressed', 'false');
+    setTimeout(() => { voiceNoteEl.textContent = ''; }, 2500);
+  };
+}
+
+function toggleMic() {
+  if (!recognizer) {
+    voiceNoteEl.textContent = UI[currentLang].noSpeech;
+    return;
+  }
+  if (isRecording) {
+    recognizer.stop();
+  } else {
+    recognizer.lang = LANG_CODES[currentLang] || 'en-US';
+    try { recognizer.start(); } catch (_) {}
+  }
+}
