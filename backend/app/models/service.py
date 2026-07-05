@@ -1,48 +1,68 @@
-from datetime import datetime
-
-from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from app.db.database import Base
+from sqlalchemy import Column, Integer, String, Text, Numeric
+from sqlalchemy.orm import relationship, validates
+from app.db.base import Base
 
 
 class Service(Base):
     __tablename__ = "services"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    fee: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    name_rw = Column(String(255), nullable=False)
+    category = Column(String(100), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    fee = Column(Numeric(10, 2), nullable=False, default=0.00)
+    processing_days = Column(Integer, nullable=True)
 
-    requirements: Mapped[list["Requirement"]] = relationship(back_populates="service", cascade="all, delete-orphan")
-    steps: Mapped[list["Step"]] = relationship(back_populates="service", cascade="all, delete-orphan")
-    applications: Mapped[list["Application"]] = relationship(back_populates="service")
+    # Relationships
+    requirements = relationship("Requirement", back_populates="service")
+    steps = relationship("Step", back_populates="service")
 
+    @validates("name")
+    def validate_name(self, key, name):
+        name = name.strip()
+        if not name:
+            raise ValueError("Service name cannot be empty")
+        return name
 
-class Requirement(Base):
-    __tablename__ = "requirements"
+    @validates("name_rw")
+    def validate_name_rw(self, key, name_rw):
+        name_rw = name_rw.strip()
+        if not name_rw:
+            raise ValueError("Kinyarwanda service name cannot be empty")
+        return name_rw
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    service_id: Mapped[int] = mapped_column(ForeignKey("services.id", ondelete="CASCADE"), index=True)
-    name: Mapped[str] = mapped_column(String(255))
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    mandatory: Mapped[bool] = mapped_column(Boolean, default=True)
-    needs_upload: Mapped[bool] = mapped_column(Boolean, default=False)
-    order_index: Mapped[int] = mapped_column(default=0)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    @validates("fee")
+    def validate_fee(self, key, fee):
+        if fee < 0:
+            raise ValueError("Service fee cannot be negative")
+        return fee
 
-    service: Mapped["Service"] = relationship(back_populates="requirements")
-    application_data: Mapped[list["ApplicationData"]] = relationship(back_populates="requirement")
-    uploads: Mapped[list["UploadedDocument"]] = relationship(back_populates="requirement")
+    @validates("category")
+    def validate_category(self, key, category):
+        category = category.strip().title()
+        allowed = [
+            "Identification",
+            "Family",
+            "Health",
+            "Business",
+            "Land",
+            "Education",
+            "Transport",
+            "Other"
+        ]
+        if category not in allowed:
+            raise ValueError(
+                f"Invalid category: {category}. "
+                f"Allowed categories are: {allowed}"
+            )
+        return category
 
+    @validates("processing_days")
+    def validate_processing_days(self, key, days):
+        if days is not None and days < 0:
+            raise ValueError("Processing days cannot be negative")
+        return days
 
-class Step(Base):
-    __tablename__ = "steps"
-
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    service_id: Mapped[int] = mapped_column(ForeignKey("services.id", ondelete="CASCADE"), index=True)
-    order_index: Mapped[int] = mapped_column(default=0)
-    description: Mapped[str] = mapped_column(Text)
-
-    service: Mapped["Service"] = relationship(back_populates="steps")
+    def __repr__(self):
+        return f"<Service id={self.id} name={self.name} category={self.category}>"

@@ -1,18 +1,56 @@
-from datetime import datetime
-
-from sqlalchemy import DateTime, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from app.db.database import Base
+from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy.orm import relationship, validates
+from datetime import datetime, timezone
+import re
+from app.db.base import Base
 
 
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    phone_number: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
-    preferred_language: Mapped[str] = mapped_column(String(16), default="en")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    id = Column(Integer, primary_key=True, index=True)
+    phone_number = Column(String(20), unique=True, nullable=False, index=True)
+    preferred_language = Column(String(10), nullable=False, default="rw")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    applications: Mapped[list["Application"]] = relationship(back_populates="user")
-    conversations: Mapped[list["Conversation"]] = relationship(back_populates="user")
+    # Relationships
+    conversations = relationship("Conversation", back_populates="user")
+
+    @validates("phone_number")
+    def validate_phone_number(self, key, phone):
+        # Strip whitespace
+        phone = phone.strip()
+
+        if not phone:
+            raise ValueError("Phone number cannot be empty")
+
+        cleaned = re.sub(r"[\s\-]", "", phone)
+
+        pattern = r"^(\+?250|0)7[2389]\d{7}$"
+        if not re.match(pattern, cleaned):
+            raise ValueError(
+                f"Invalid phone number format: {phone}. "
+                "Expected Rwandan format: 07XXXXXXXX or +2507XXXXXXXX"
+            )
+
+        if cleaned.startswith("+250"):
+            cleaned = "0" + cleaned[4:]
+        elif cleaned.startswith("250"):
+            cleaned = "0" + cleaned[3:]
+
+        return cleaned
+
+    @validates("preferred_language")
+    def validate_language(self, key, language):
+        language = language.strip().lower()
+
+        allowed = ["rw", "en", "fr"]
+        if language not in allowed:
+            raise ValueError(
+                f"Invalid language: {language}. "
+                f"Allowed values are: rw (Kinyarwanda), en (English), fr (French)"
+            )
+        return language
+
+    def __repr__(self):
+        return f"<User id={self.id} phone={self.phone_number}>"
