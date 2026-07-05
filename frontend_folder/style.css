@@ -752,8 +752,7 @@ body {
     font-size: var(--size-xs);
   }
 
-  .service-card,
-  .quick-panel {  }
+  .service-card,.quick-panel {  }
 
   .msg { max-width: 90%; }
 }
