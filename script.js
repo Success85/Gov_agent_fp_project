@@ -159,3 +159,189 @@ const UI = {
     sessionLabel:     'User',
     convLabel:        'Conversation',
   },
+
+  fr: {
+    placeholder:      'Tapez votre question ici…',
+    statusOnline:     'Connecté à GovAgent — réponses basées sur les données vérifiées d\'Irembo',
+    statusOffline:    'Serveur inaccessible — mode local actif',
+    greeting:         'Bonjour ! Je suis GovAgent, votre assistant pour les services gouvernementaux rwandais sur Irembo.\n\nPosez votre question en kinyarwanda, anglais ou français et je vous guiderai pas à pas.',
+    quickHeading:     'Services disponibles',
+    voiceHeading:     'Lire les réponses à voix haute',
+    voiceOn:          'Actif',
+    voiceOff:         'Inactif',
+    voiceNote:        'Les réponses seront lues à voix haute après chaque réponse.',
+    infoHeading:      'À propos de GovAgent',
+    infoNote:         'GovAgent vous guide à travers les services Irembo en kinyarwanda, anglais ou français. Toutes les informations sont issues de la documentation officielle Irembo.',
+    scLabel:          'Guide de service',
+    scSource:         'Source : données Irembo vérifiées',
+    scReqHeading:     'Pièces requises',
+    scStepsHeading:   'Étapes',
+    feeSuffix:        ' FRW',
+    badgeVerified:    'Basé sur des données vérifiées',
+    badgeGeneral:     'Réponse générale',
+    listening:        'Écoute en cours… posez votre question.',
+    noSpeech:         'La saisie vocale n\'est pas prise en charge dans ce navigateur.',
+    noMatch:          'Je n\'ai pas trouvé de correspondance précise. Essayez de demander un service comme "carte d\'identité", "acte de naissance" ou "mutuelle".',
+    optional:         '(optionnel)',
+    sessionLabel:     'Utilisateur',
+    convLabel:        'Conversation',
+  },
+};
+
+/* Language Detection */
+const LANG_MARKERS = {
+  rw: ['ndashaka','nshobora','mfasha','amakuru','indangamuntu','icyemezo','ubwishingizi',
+       'amavuko','umurenge','ese','gusaba','kwishyura','murakoze','nde','mbese',
+       'uko','bite','nyuma','kuri','nta','imodoka','uruhushya','umuryango'],
+  fr: ['bonjour','merci','comment','voudrais','besoin','pouvez','certificat','carte',
+       'identité','où','quand','combien','acte','naissance','permis','conduire',
+       'les','des','une','comment','faire','je','mariage','mutuelle'],
+  en: ['hello','please','need','want','how','what','where','when','certificate',
+       'application','help','driving','license','birth','national','insurance',
+       'health','marriage','renewal','apply'],
+};
+
+function detectLanguage(text) {
+  const tokens = (text.toLowerCase().match(/[a-zàâäéèêëïîôöùûüç']+/g) || []);
+  const scores = { rw: 0, fr: 0, en: 0 };
+  tokens.forEach(tok => {
+    if (LANG_MARKERS.rw.includes(tok)) scores.rw += 2;
+    if (LANG_MARKERS.fr.includes(tok)) scores.fr += 1;
+    if (LANG_MARKERS.en.includes(tok)) scores.en += 1;
+  });
+  const rwClusters = (text.toLowerCase().match(/(shy|nyi|mwa|cya|nya|ubw)/g) || []).length;
+  scores.rw += rwClusters;
+  const total = scores.rw + scores.fr + scores.en;
+  if (total === 0) return currentLang;
+  return Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
+}
+
+/* Retrieval */
+function tokenize(str) {
+  return new Set((str.toLowerCase().match(/[a-zàâäéèêëïîôöùûüç']+/g) || []));
+}
+
+function retrieveServices(query, lang) {
+  const qTokens = tokenize(query);
+  if (qTokens.size === 0) return [];
+  const scored = [];
+  Object.values(KB).forEach(svc => {
+    const nameText = [svc.name.en, svc.name.rw, svc.name.fr].join(' ');
+    const bodyText = [
+      svc.requirements.map(r => r[lang] || r.en).join(' '),
+      svc.steps.map(s => s[lang] || s.en).join(' '),
+      svc.category[lang] || svc.category.en,
+    ].join(' ');
+    const nameTokens = tokenize(nameText);
+    const bodyTokens = tokenize(bodyText);
+    let nameHits = 0, bodyHits = 0;
+    qTokens.forEach(tok => {
+      if (nameTokens.has(tok)) nameHits++;
+      if (bodyTokens.has(tok)) bodyHits++;
+    });
+    const score = 3 * nameHits + bodyHits;
+    if (score > 0) scored.push({ svc, score });
+  });
+  return scored.sort((a, b) => b.score - a.score).slice(0, 2).map(s => s.svc);
+}
+
+/* Generating Response */
+const TEMPLATES = {
+  intro:      { rw: n => `Ngufasha gusaba **${n}** kuri Irembo. Dore amakuru akenewe:`,     en: n => `I can help you with **${n}** on Irembo. Here is what you need:`,              fr: n => `Je peux vous aider pour **${n}** sur Irembo. Voici ce qu'il vous faut :` },
+  reqHeader:  { rw: () => 'Ibisabwa:',                                                       en: () => 'Requirements:',                                                              fr: () => 'Pièces requises :' },
+  stepHeader: { rw: () => 'Intambwe zo gukurikiza:',                                         en: () => 'Steps to follow:',                                                           fr: () => 'Étapes à suivre :' },
+  fee:        { rw: a => `Igiciro: ${Number(a).toLocaleString()} RWF (wishyurwa ukoresheje Mobile Money).`, en: a => `Fee: ${Number(a).toLocaleString()} RWF, paid via Mobile Money.`, fr: a => `Frais : ${Number(a).toLocaleString()} FRW, payés via Mobile Money.` },
+  optional:   { rw: ' (si itegeko)', en: ' (optional)', fr: ' (optionnel)' },
+  closing:    { rw: () => 'Ufite ikibazo ikindi? Nzabishingiraho.',                           en: () => 'Do you have any other questions? I\'m here to help.',                         fr: () => 'Avez-vous d\'autres questions ? Je suis là pour vous aider.' },
+  multiMatch: { rw: names => `Nabonye serivisi nyinshi zihuje:\n${names}.\nNi iyihe ushaka kumenya?`, en: names => `I found a few matching services:\n${names}.\nWhich one would you like to know about?`, fr: names => `J'ai trouvé plusieurs services correspondants :\n${names}.\nLequel souhaitez-vous connaître ?` },
+};
+
+function buildLocalResponse(matches, lang) {
+  const ui = UI[lang];
+  if (matches.length === 0) return ui.noMatch;
+  if (matches.length > 1) {
+    const names = matches.map((s, i) => `  ${i + 1}. ${s.name[lang]}`).join('\n');
+    return TEMPLATES.multiMatch[lang](names);
+  }
+  const svc = matches[0];
+  const opt = TEMPLATES.optional[lang];
+  const lines = [
+    TEMPLATES.intro[lang](svc.name[lang]), '',
+    TEMPLATES.reqHeader[lang](),
+    ...svc.requirements.map(r => `  - ${r[lang] || r.en}${r.mandatory ? '' : opt}`),
+    '', TEMPLATES.stepHeader[lang](),
+    ...svc.steps.map((s, i) => `  ${i + 1}. ${s[lang] || s.en}`),
+    '', TEMPLATES.fee[lang](svc.fee_rwf),
+    '', TEMPLATES.closing[lang](),
+  ];
+  return lines.join('\n');
+}
+
+/* Session */
+const SESSION = {
+  STORAGE_KEY_USER: 'govagent_user_id',
+
+  getUserId() {
+    const stored = localStorage.getItem(this.STORAGE_KEY_USER);
+    if (stored) return Number(stored);
+    return null;
+  },
+
+  saveUserId(id) {
+    localStorage.setItem(this.STORAGE_KEY_USER, String(id));
+  },
+  conversationId: null,
+
+  async initUser() {
+    const existing = this.getUserId();
+    if (existing) return existing;
+    this.saveUserId(CONFIG.GUEST_USER_ID);
+    return CONFIG.GUEST_USER_ID;
+  },
+
+  updateSessionDisplay() {
+    const userEl = document.getElementById('session-user-id');
+    const convEl = document.getElementById('session-conv-id');
+    if (userEl) userEl.textContent = `${UI[currentLang].sessionLabel} #${this.getUserId() ?? '—'}`;
+    if (convEl) convEl.textContent = this.conversationId
+      ? `${UI[currentLang].convLabel} #${this.conversationId}`
+      : '';
+  },
+};
+
+/* API */
+const API = {
+  async _fetch(method, path, body = null) {
+    const url = `${CONFIG.BACKEND_URL}${path}`;
+    const opts = {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+    };
+    if (body !== null) opts.body = JSON.stringify(body);
+    const res = await fetch(url, opts);
+    if (!res.ok) {
+      console.warn(`[API] ${method} ${path} → ${res.status}`);
+      return null;
+    }
+    return res.json();
+  },
+
+  async _fetchMultipart(path, formData) {
+    const url = `${CONFIG.BACKEND_URL}${path}`;
+    const res = await fetch(url, { method: 'POST', body: formData });
+    if (!res.ok) {
+      console.warn(`[API] POST ${path} → ${res.status}`);
+      return null;
+    }
+    return res.json();
+  },
+
+  async checkHealth() {
+    try {
+      const data = await this._fetch('GET', '/health');
+      return data?.status === 'ok';
+    } catch {
+      return false;
+    }
+  },
+  
