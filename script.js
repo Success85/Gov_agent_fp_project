@@ -103,3 +103,34 @@ const KB = {
     ],
   },
 };
+
+const LANG_CODES = { rw: 'rw-RW', en: 'en-US', fr: 'fr-FR' };
+
+const UI = {
+  rw: {
+    placeholder:      'Andika ikibazo cyawe hano…',
+    statusOnline:     'Wahuye kuri GovAgent — amakuru ashingiye ku byemejwe bya Irembo',
+    statusOffline:    'Imikorere yo hanze ntiboneka — gukorana mu buryo bwo hanze',
+    greeting:         'Muraho! Ndi GovAgent, umufasha wawe muri serivisi za Leta kuri Irembo.\n\nBaza ikibazo cyawe mu Kinyarwanda, Icyongereza, cyangwa Igifaransa — nzakumenyesha uko usabwa gutera intambwe.',
+    quickHeading:     'Serivisi zihari',
+    voiceHeading:     'Gusoma ibisubizo mu mvugo',
+    voiceOn:          'Rya',
+    voiceOff:         'Siyo',
+    voiceNote:        'Ibisubizo bizasomwa mu mvugo nyuma y\'igisubizo cyose.',
+    infoHeading:      'Ibisobanuro',
+    infoNote:         'GovAgent igufasha mu serivisi za Irembo mu Kinyarwanda, Icyongereza, cyangwa Igifaransa. Amakuru yose avuye mu nyandiko yemejwe za Irembo.',
+    scLabel:          'Amabwiriza ya Serivisi',
+    scSource:         'Inkomoko: amakuru yemejwe ya Irembo',
+    scReqHeading:     'Ibisabwa',
+    scStepsHeading:   'Intambwe',
+    feeSuffix:        ' RWF',
+    badgeVerified:    'Bishingiye ku makuru yemejwe',
+    badgeGeneral:     'Ibisubizo rusange',
+    listening:        'Ndumva… vuga ikibazo cyawe.',
+    noSpeech:         'Ubwo buryo bwo kuvuga ntibushoboka muri iyi porogaramu.',
+    noMatch:          'Mbabarira, ntibonetse amakuru ku kibazo cyawe. Gerageza uviburitsaho nk\'aya: "gusaba indangamuntu" cyangwa "kwishyura ubwishingizi".',
+    optional:         '(si itegeko)',
+    sessionLabel:     'Umukoresha',
+    convLabel:        'Ikiganiro',
+  },
+  
