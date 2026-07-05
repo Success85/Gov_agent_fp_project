@@ -418,3 +418,73 @@ const API = {
     }
   },
 
+  /* Document upload */
+  async uploadDocument(applicationId, file, requirementId = null) {
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      if (requirementId !== null) fd.append('requirement_id', String(requirementId));
+      return await this._fetchMultipart(`/uploads/${applicationId}`, fd);
+    } catch (err) {
+      console.error('[API] uploadDocument failed:', err);
+      return null;
+    }
+  },
+
+  // Will be added when the users and services endpoints are ready from Davy.
+};
+
+/* Chat Pipeline */
+let currentLang  = 'en';
+let isBusy       = false;
+let backendOnline = false;
+
+async function ensureConversation() {
+  if (SESSION.conversationId) return SESSION.conversationId;
+  const userId = SESSION.getUserId() ?? CONFIG.GUEST_USER_ID;
+  const conv = await API.startConversation(userId);
+  if (conv?.id) {
+    SESSION.conversationId = conv.id;
+    SESSION.updateSessionDisplay();
+  }
+  return SESSION.conversationId;
+}
+
+async function sendMessage() {
+  const raw = textInput.value.trim();
+  if (!raw || isBusy) return;
+
+  textInput.value = '';
+  autoGrow(textInput);
+  isBusy = true;
+  sendBtn.disabled = true;
+
+  const detected = detectLanguage(raw);
+  if (detected !== currentLang) setLanguage(detected, false);
+
+  appendMessage('citizen', raw);
+  showTyping();
+
+  const convId = await ensureConversation();
+  if (convId) {
+    API.saveMessage(convId, 'user', raw).catch(() => {});
+  }
+  await new Promise(r => setTimeout(r, 600 + Math.random() * 400));
+const matches  = retrieveServices(raw, currentLang);
+  const replyText = buildLocalResponse(matches, currentLang);
+
+  hideTyping();
+
+  const showBadge = matches.length === 1;
+  appendMessage('assistant', replyText, { badge: showBadge ? true : undefined });
+
+  if (convId) {
+    API.saveMessage(convId, 'assistant', replyText).catch(() => {});
+  }
+
+  if (matches.length === 1) showServiceCard(matches[0]);
+  speak(replyText, currentLang);
+  isBusy = false;
+  sendBtn.disabled = false;
+  textInput.focus();
+}
