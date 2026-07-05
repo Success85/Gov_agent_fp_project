@@ -15,7 +15,6 @@ class User(Base):
 
     # Relationships
     conversations = relationship("Conversation", back_populates="user")
-    applications = relationship("Application", back_populates="user")
 
     @validates("phone_number")
     def validate_phone_number(self, key, phone):

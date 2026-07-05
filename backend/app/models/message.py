@@ -21,11 +21,6 @@ class Message(Base):
 
     # Relationships
     conversation = relationship("Conversation", back_populates="messages")
-    feedback = relationship(
-        "Feedback",
-        back_populates="message",
-        uselist=False
-    )
 
     @validates("role")
     def validate_role(self, key, role):
