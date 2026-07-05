@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import application, chat, payment, upload
+from app.api import application, chat, payment, services, upload, users
 from app.core.config import get_settings
 from app.db.database import init_db
 from app.schemas import HealthResponse
@@ -27,6 +27,8 @@ app.add_middleware(
 )
 
 app.include_router(chat.router)
+app.include_router(users.router)
+app.include_router(services.router)
 app.include_router(application.router)
 app.include_router(upload.router)
 app.include_router(payment.router)

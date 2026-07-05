@@ -16,6 +16,10 @@ class UserCreate(BaseModel):
     preferred_language: str = "en"
 
 
+class UserLookup(BaseModel):
+    phone_number: str | None = None
+
+
 class UserRead(ORMModel):
     id: int
     phone_number: str | None
@@ -37,8 +41,49 @@ class ServiceRead(ORMModel):
     is_active: bool
 
 
+class RequirementRead(ORMModel):
+    id: int
+    service_id: int
+    name: str
+    description: str | None
+    mandatory: bool
+    needs_upload: bool
+    order_index: int
+
+
+class StepRead(ORMModel):
+    id: int
+    service_id: int
+    order_index: int
+    description: str
+
+
+class ServiceDetailRead(ServiceRead):
+    requirements: list[RequirementRead] = []
+    steps: list[StepRead] = []
+
+
 class ConversationCreate(BaseModel):
     user_id: int
+
+
+class ChatRequest(BaseModel):
+    message: str
+    phone_number: str | None = None
+    user_id: int | None = None
+    conversation_id: int | None = None
+    service_id: int | None = None
+    preferred_language: str = "en"
+
+
+class ChatReply(BaseModel):
+    conversation_id: int
+    user_id: int
+    intent: str
+    service_name: str | None
+    assistant_message: str
+    assistant_message_id: int
+    service_id: int | None = None
 
 
 class ConversationRead(ORMModel):
@@ -61,10 +106,23 @@ class MessageRead(ORMModel):
     created_at: datetime
 
 
+class MessageCreateResponse(BaseModel):
+    message: MessageRead
+    assistant_reply: MessageRead | None = None
+
+
 class ApplicationCreate(BaseModel):
     user_id: int
     service_id: int
     conversation_id: int | None = None
+
+
+class ApplicationCreateByPhone(BaseModel):
+    phone_number: str | None = None
+    user_id: int | None = None
+    service_id: int
+    conversation_id: int | None = None
+    preferred_language: str = "en"
 
 
 class ApplicationRead(ORMModel):
@@ -76,6 +134,12 @@ class ApplicationRead(ORMModel):
     reference_number: str
     created_at: datetime
     updated_at: datetime
+
+
+class ApplicationDetailRead(ApplicationRead):
+    service_name: str | None = None
+    total_payments: int = 0
+    total_uploaded_files: int = 0
 
 
 class ApplicationDataUpsert(BaseModel):
