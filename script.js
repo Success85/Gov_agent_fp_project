@@ -344,4 +344,77 @@ const API = {
       return false;
     }
   },
-  
+
+/* Chat */
+  async startConversation(userId) {
+    try {
+      return await this._fetch('POST', '/chat/start', { user_id: userId });
+    } catch (err) {
+      console.error('[API] startConversation failed:', err);
+      return null;
+    }
+  },
+
+  async saveMessage(conversationId, role, content) {
+    try {
+      return await this._fetch(
+        'POST',
+        `/chat/${conversationId}/messages`,
+        { role, content }
+      );
+    } catch (err) {
+      console.error('[API] saveMessage failed:', err);
+      return null;
+    }
+  },
+
+/* Application */
+  async createApplication(userId, serviceId, conversationId) {
+    try {
+      return await this._fetch('POST', '/applications', {
+        user_id: userId,
+        service_id: serviceId,
+        conversation_id: conversationId ?? null,
+      });
+    } catch (err) {
+      console.error('[API] createApplication failed:', err);
+      return null;
+    }
+  },
+
+  async getApplication(applicationId) {
+    try {
+      return await this._fetch('GET', `/applications/${applicationId}`);
+    } catch (err) {
+      console.error('[API] getApplication failed:', err);
+      return null;
+    }
+  },
+
+  async saveApplicationData(applicationId, requirementId, value) {
+    try {
+      return await this._fetch(
+        'PUT',
+        `/applications/${applicationId}/data/${requirementId}`,
+        { requirement_id: requirementId, value }
+      );
+    } catch (err) {
+      console.error('[API] saveApplicationData failed:', err);
+      return null;
+    }
+  },
+
+  /* Payment */
+  async createPayment(applicationId, amount, gatewayReference = null) {
+    try {
+      return await this._fetch('POST', `/payments/${applicationId}`, {
+        payment_method: 'mobile_money',
+        amount,
+        gateway_reference: gatewayReference,
+      });
+    } catch (err) {
+      console.error('[API] createPayment failed:', err);
+      return null;
+    }
+  },
+
