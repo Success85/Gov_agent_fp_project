@@ -45,3 +45,9 @@ def create_tables():
     from app.models import user, service, requirement, steps, conversation, message
     Base.metadata.create_all(bind=engine)
     logger.info("All database tables created successfully")
+
+
+if __name__ == "__main__":
+    print("Creating database tables...")
+    create_tables()
+    print("Done!")
