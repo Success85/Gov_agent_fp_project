@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import application, chat, payment, services, upload, users
 from app.core.config import get_settings
 from app.db.database import init_db
+from app.db.database import SessionLocal
 from app.schemas import HealthResponse
 
 
@@ -36,4 +37,13 @@ app.include_router(payment.router)
 
 @app.get("/health", response_model=HealthResponse)
 def health_check() -> HealthResponse:
-    return HealthResponse()
+    from sqlalchemy import text
+
+    db_status = "ok"
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+    except Exception:
+        db_status = "error"
+    return HealthResponse(status="ok", database=db_status)

@@ -9,6 +9,7 @@ class ORMModel(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str = "ok"
+    database: str = "ok"
 
 
 class UserCreate(BaseModel):
