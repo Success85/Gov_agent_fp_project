@@ -1,7 +1,9 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from app.api import application, chat, payment, services, upload, users
 from app.core.config import get_settings
@@ -17,6 +19,10 @@ async def lifespan(app: FastAPI):
 
 
 settings = get_settings()
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 app.add_middleware(
@@ -26,6 +32,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+logger.info("Starting Gov Agent API server")
+
+
+@app.get("/")
+def root():
+    return RedirectResponse(url="/docs")
+
 
 app.include_router(chat.router)
 app.include_router(users.router)
