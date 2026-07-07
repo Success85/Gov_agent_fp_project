@@ -31,7 +31,10 @@ def chat_with_ai(payload: ChatRequest, db: Session = Depends(get_db)):
         conversation = create_conversation(db, user.id)
 
     add_message(db, conversation.id, "user", payload.message)
-    assistant_message, intent, service_name, service_id = build_ai_reply(db, conversation.id, payload.message, payload.service_id)
+    assistant_message, intent, service_name, service_id = build_ai_reply(
+        db, conversation.id, payload.message, payload.service_id,
+        language=payload.preferred_language,
+    )
     return ChatReply(
         conversation_id=conversation.id,
         user_id=user.id,

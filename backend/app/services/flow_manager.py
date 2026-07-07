@@ -76,7 +76,7 @@ def get_or_create_conversation(db: Session, user_id: int, conversation_id: int |
     return create_conversation(db, user_id)
 
 
-def build_ai_reply(db: Session, conversation_id: int, message: str, service_id: int | None = None) -> tuple[Message, str, str | None, int | None]:
+def build_ai_reply(db: Session, conversation_id: int, message: str, service_id: int | None = None, language: str = "rw") -> tuple[Message, str, str | None, int | None]:
     conversation = db.get(Conversation, conversation_id)
     if conversation is None:
         raise ValueError("Conversation not found")
@@ -117,7 +117,7 @@ def build_ai_reply(db: Session, conversation_id: int, message: str, service_id: 
     if selected_context is None:
         selected_context = GroundingContext(service_name="General Guidance")
 
-    prompt = build_grounded_prompt(message, selected_context)
+    prompt = build_grounded_prompt(message, selected_context, language=language)
     llm_client = LLMClient()
     assistant_response = llm_client.generate_reply(prompt, system_prompt=f"Intent: {intent_result.intent}").text
     assistant_message = add_message(db, conversation_id, "assistant", assistant_response)
