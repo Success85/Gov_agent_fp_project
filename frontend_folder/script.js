@@ -87,6 +87,13 @@ const API = {
       conversation_id: conversationId ?? null,
     });
   },
+  createApplication(userId, serviceId, conversationId) { 
+    return this._fetch('POST', '/applications', {
+      user_id: userId,
+      service_id: serviceId,
+      conversation_id: conversationId ?? null,
+    });
+  },
   getApplication(applicationId) {
     return this._fetch('GET', `/applications/${applicationId}`);
   },
@@ -129,7 +136,7 @@ const API = {
   } 
 
 async function identify(phoneNumber) {
-  let user = await API.lookupUser(phoneNumber);          // 404 → null
+  let user = await API.lookupUser(phoneNumber); 
   if (!user) user = await API.createUser(phoneNumber, currentLang);
   if (user?.id != null) {
     this.saveUserId(user.id);
@@ -161,7 +168,7 @@ async function beginApplication(svc) {
   const userId    = SESSION.getUserId() ?? CONFIG.GUEST_USER_ID;
   const serviceId = svc.backendId; 
   if (serviceId == null) {
-    console.warn(`[APP] No backend service_id for "${svc.id}".`);
+    console.warn(`[APP] No backend service_id for "${svc.id}"— is hydrateServices() done?`);
     return null;
   }
   return API.startApplication(userId, serviceId, SESSION.conversationId);
