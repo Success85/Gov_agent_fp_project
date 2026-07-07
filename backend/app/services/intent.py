@@ -17,14 +17,31 @@ KEYWORD_TO_SERVICE = {
 	"id": "National ID",
 	"indangamuntu": "National ID",
 	"icyemezo cy'amavuko": "Birth Certificate",
+	"amavuko": "Birth Certificate",
+	"iryangamuntu": "National ID",
+	"karamu": "National ID",
+	"identity": "National ID",
+	"certificat": "Birth Certificate",
+	"indentity": "National ID",
+	"citizenship": "National ID",
 }
+
+GREETING_TOKENS = [
+	"muraho", "hello", "hi", "hey", "bwakeye", "mwiriwe",
+	"amakuru", "bite", "niemeza", "yego",
+]
+
+HELP_TOKENS = [
+	"help", "assist", "how", "nkeneye", "ifasha", "ngomba",
+	"ndashaka", "nkenera", "mbaza", "saba", "ubufasha",
+	"guidance", "guide", "ntabwa",
+]
 
 
 def detect_intent(message: str, available_services: list[str] | None = None) -> IntentResult:
-	"""Detect a basic user intent and the most likely service from a free-text message."""
 	normalized = message.strip().lower()
 
-	if any(token in normalized for token in ["muraho", "hello", "hi"]):
+	if any(token in normalized for token in GREETING_TOKENS):
 		return IntentResult(intent="greeting", service_name=None, confidence=0.95)
 
 	matched_service: str | None = None
@@ -40,7 +57,7 @@ def detect_intent(message: str, available_services: list[str] | None = None) -> 
 	if matched_service:
 		return IntentResult(intent="start_service", service_name=matched_service, confidence=best_confidence)
 
-	if any(token in normalized for token in ["help", "assist", "how", "nkeneye"]):
+	if any(token in normalized for token in HELP_TOKENS):
 		return IntentResult(intent="support_request", service_name=None, confidence=0.7)
 
 	return IntentResult(intent="general_query", service_name=None, confidence=0.55)

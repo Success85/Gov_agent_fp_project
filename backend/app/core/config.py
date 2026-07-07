@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["*"]
     storage_dir: str = "storage"
 
+    llm_provider: str = "mock"
+    llm_api_key: str | None = None
+    llm_model_name: str = "mock-kinyarwanda-assistant"
+    llm_api_url: str | None = None
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 
