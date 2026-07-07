@@ -10,31 +10,60 @@ class LLMResponse:
 	model: str = "mock-kinyarwanda-assistant"
 
 
-KINYARWANDA_GREETING = (
-	"Muraho! Ndi umuyobozi wa serivisi za leta. \n\n"
-	"Nkwakiriye kuri serivisi z'ibanze za leta. Ushobora kumbaza ikibazo ufite "
-	"cyangwa ukore porogaramu ya leta. \n\n"
-	"Serivisi zihari: \n"
-	"- Icyemezo cy'Amavuko (Birth Certificate)\n"
-	"- Indangamuntu (National ID)\n\n"
-	"None se nkugirire iki?"
-)
+GREETINGS = {
+	"rw": (
+		"Muraho! Ndi umuyobozi wa serivisi za leta. \n\n"
+		"Nkwakiriye kuri serivisi z'ibanze za leta. Ushobora kumbaza ikibazo ufite "
+		"cyangwa ukore porogaramu ya leta. \n\n"
+		"Serivisi zihari: \n"
+		"- Icyemezo cy'Amavuko (Birth Certificate)\n"
+		"- Indangamuntu (National ID)\n\n"
+		"None se nkugirire iki?"
+	),
+	"en": (
+		"Hello! I am a government service assistant. \n\n"
+		"Welcome to the government services portal. You can ask me a question "
+		"or start an application. \n\n"
+		"Available services: \n"
+		"- Birth Certificate\n"
+		"- National ID\n\n"
+		"How can I help you?"
+	),
+}
 
 SERVICE_INTROS = {
-	"National ID": (
-		"Nzakuyobora mu gusaba Indangamuntu. \n\n"
-		"Ibi bikurikira ni ibyangombwa: \n"
-		"1. Amazina yawe, itariki y'amavuko, n'imibare yawe yo kurambana\n"
-		"2. Ifoto cyangwa dosiye ishyigikira\n\n"
-		"Shyiraho numero ya terefone yawe ngo tubone gutangira."
-	),
-	"Birth Certificate": (
-		"Nzakuyobora mu gusaba Icyemezo cy'Amavuko. \n\n"
-		"Ibi bikurikira ni ibyangombwa: \n"
-		"1. Amazina yawe, itariki y'amavuko, n'imibare yawe yo kurambana\n"
-		"2. Dosiye ishyigikira (niba bisabwa)\n\n"
-		"Shyiraho numero ya terefone yawe ngo tubone gutangira."
-	),
+	"National ID": {
+		"rw": (
+			"Nzakuyobora mu gusaba Indangamuntu. \n\n"
+			"Ibi bikurikira ni ibyangombwa: \n"
+			"1. Amazina yawe, itariki y'amavuko, n'imibare yawe yo kurambana\n"
+			"2. Ifoto cyangwa dosiye ishyigikira\n\n"
+			"Shyiraho numero ya terefone yawe ngo tubone gutangira."
+		),
+		"en": (
+			"I will guide you through applying for a National ID. \n\n"
+			"The following are required: \n"
+			"1. Your full name, date of birth, and contact details\n"
+			"2. A photo or supporting document\n\n"
+			"Please provide your phone number to get started."
+		),
+	},
+	"Birth Certificate": {
+		"rw": (
+			"Nzakuyobora mu gusaba Icyemezo cy'Amavuko. \n\n"
+			"Ibi bikurikira ni ibyangombwa: \n"
+			"1. Amazina yawe, itariki y'amavuko, n'imibare yawe yo kurambana\n"
+			"2. Dosiye ishyigikira (niba bisabwa)\n\n"
+			"Shyiraho numero ya terefone yawe ngo tubone gutangira."
+		),
+		"en": (
+			"I will guide you through applying for a Birth Certificate. \n\n"
+			"The following are required: \n"
+			"1. Your full name, date of birth, and contact details\n"
+			"2. A supporting document (if required)\n\n"
+			"Please provide your phone number to get started."
+		),
+	},
 }
 
 
@@ -65,25 +94,44 @@ class LLMClient:
 		info = _extract_prompt_info(prompt)
 		intent = (system_prompt or "").strip()
 
+		language = "rw"
+		if "language: en" in prompt.lower() or "preferred_language: en" in prompt.lower():
+			language = "en"
+
 		if "greeting" in intent:
-			text = KINYARWANDA_GREETING
+			text = GREETINGS.get(language, GREETINGS["rw"])
 		elif info["service"] and info["service"] in SERVICE_INTROS:
-			intro = SERVICE_INTROS[info["service"]]
+			intro = SERVICE_INTROS[info["service"]].get(language, SERVICE_INTROS[info["service"]]["rw"])
 			requirements = info["requirements"].replace("- ", "\n- ")
 			fee = info["fee"]
-			text = (
-				f"{intro}\n\n"
-				f"Ibikorwa byose: {requirements}\n\n"
-				f"Amafaranga: {fee} RWF\n\n"
-				f"Ushaka gukomeza? Emeza cyangwa ugaruke."
-			)
+			if language == "en":
+				text = (
+					f"{intro}\n\n"
+					f"All steps: {requirements}\n\n"
+					f"Fee: {fee} RWF\n\n"
+					f"Do you want to continue? Confirm or go back."
+				)
+			else:
+				text = (
+					f"{intro}\n\n"
+					f"Ibikorwa byose: {requirements}\n\n"
+					f"Amafaranga: {fee} RWF\n\n"
+					f"Ushaka gukomeza? Emeza cyangwa ugaruke."
+				)
 		else:
 			reqs = info["requirements"].replace("- ", "\n- ")
-			text = (
-				f"Ndagufasha kuri serivisi ya leta. \n\n"
-				f"Ibyangombwa: {reqs}\n\n"
-				f"Ese hari ikindi wakwiriza?"
-			)
+			if language == "en":
+				text = (
+					f"Let me help you with this service. \n\n"
+					f"Requirements: {reqs}\n\n"
+					f"Is there anything else you need?"
+				)
+			else:
+				text = (
+					f"Ndagufasha kuri serivisi ya leta. \n\n"
+					f"Ibyangombwa: {reqs}\n\n"
+					f"Ese hari ikindi wakwiriza?"
+				)
 
 		return LLMResponse(text=text, model=self.model_name)
 
