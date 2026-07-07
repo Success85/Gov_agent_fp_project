@@ -95,8 +95,9 @@ class LLMClient:
 		intent = (system_prompt or "").strip()
 
 		language = "rw"
-		if "language: en" in prompt.lower() or "preferred_language: en" in prompt.lower():
-			language = "en"
+		lang_match = re.search(r"Language:\s*(rw|en)", prompt, re.IGNORECASE)
+		if lang_match:
+			language = lang_match.group(1).lower()
 
 		if "greeting" in intent:
 			text = GREETINGS.get(language, GREETINGS["rw"])

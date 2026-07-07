@@ -32,6 +32,7 @@ def build_grounded_prompt(user_message: str, context: GroundingContext, language
 
 	return (
 		f"{system_prompt}\n"
+		f"Language: {language}\n"
 		f"Service: {context.service_name}\n"
 		f"Description: {context.description or 'N/A'}\n"
 		f"Fee: {context.fee}\n"
