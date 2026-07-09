@@ -188,6 +188,93 @@ const UI = {
     convLabel:      'Conversation',
   },
 };
+/* Language Detection and Retrieval */
+const LANG_MARKERS = {
+  rw: ['ndashaka','nshobora','mfasha','amakuru','indangamuntu','icyemezo','ubwishingizi',
+       'amavuko','umurenge','ese','gusaba','kwishyura','murakoze','nde','mbese',
+       'uko','bite','nyuma','kuri','nta','imodoka','uruhushya','umuryango'],
+  fr: ['bonjour','merci','comment','voudrais','besoin','pouvez','certificat','carte',
+       'identité','où','quand','combien','acte','naissance','permis','conduire',
+       'les','des','une','comment','faire','je','mariage','mutuelle'],
+  en: ['hello','please','need','want','how','what','where','when','certificate',
+       'application','help','driving','license','birth','national','insurance',
+       'health','marriage','renewal','apply'],
+};
+
+function detectLanguage(text) {
+  const tokens = (text.toLowerCase().match(/[a-zàâäéèêëïîôöùûüç']+/g) || []);
+  const scores = { rw: 0, fr: 0, en: 0 };
+  tokens.forEach(tok => {
+    if (LANG_MARKERS.rw.includes(tok)) scores.rw += 2;
+    if (LANG_MARKERS.fr.includes(tok)) scores.fr += 1;
+    if (LANG_MARKERS.en.includes(tok)) scores.en += 1;
+  });
+  const rwClusters = (text.toLowerCase().match(/(shy|nyi|mwa|cya|nya|ubw)/g) || []).length;
+  scores.rw += rwClusters;
+  const total = scores.rw + scores.fr + scores.en;
+  if (total === 0) return currentLang;
+  return Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function tokenize(str) {
+  return new Set((str.toLowerCase().match(/[a-zàâäéèêëïîôöùûüç']+/g) || []));
+}
+
+function retrieveServices(query, lang) {
+  const qTokens = tokenize(query);
+  if (qTokens.size === 0) return [];
+  const scored = [];
+  Object.values(KB).forEach(svc => {
+    const nameText = [svc.name.en, svc.name.rw, svc.name.fr].join(' ');
+    const bodyText = [
+      svc.requirements.map(r => r[lang] || r.en).join(' '),
+      svc.steps.map(s => s[lang] || s.en).join(' '),
+      svc.category[lang] || svc.category.en,
+    ].join(' ');
+    const nameTokens = tokenize(nameText);
+    const bodyTokens = tokenize(bodyText);
+    let nameHits = 0, bodyHits = 0;
+    qTokens.forEach(tok => {
+      if (nameTokens.has(tok)) nameHits++;
+      if (bodyTokens.has(tok)) bodyHits++;
+    });
+    const score = 3 * nameHits + bodyHits;
+    if (score > 0) scored.push({ svc, score });
+  });
+  return scored.sort((a, b) => b.score - a.score).slice(0, 2).map(s => s.svc);
+}
+
+/* Local Response */
+const TEMPLATES = {
+  intro:      { rw: n => `Ngufasha gusaba **${n}** kuri Irembo. Dore amakuru akenewe:`,     en: n => `I can help you with **${n}** on Irembo. Here is what you need:`,              fr: n => `Je peux vous aider pour **${n}** sur Irembo. Voici ce qu'il vous faut :` },
+  reqHeader:  { rw: () => 'Ibisabwa:',                                                       en: () => 'Requirements:',                                                              fr: () => 'Pièces requises :' },
+  stepHeader: { rw: () => 'Intambwe zo gukurikiza:',                                         en: () => 'Steps to follow:',                                                           fr: () => 'Étapes à suivre :' },
+  fee:        { rw: a => `Igiciro: ${Number(a).toLocaleString()} RWF (wishyurwa ukoresheje Mobile Money).`, en: a => `Fee: ${Number(a).toLocaleString()} RWF, paid via Mobile Money.`, fr: a => `Frais : ${Number(a).toLocaleString()} FRW, payés via Mobile Money.` },
+  optional:   { rw: ' (si itegeko)', en: ' (optional)', fr: ' (optionnel)' },
+  closing:    { rw: () => 'Ufite ikibazo ikindi? Nzabishingiraho.',                           en: () => 'Do you have any other questions? I\'m here to help.',                         fr: () => 'Avez-vous d\'autres questions ? Je suis là pour vous aider.' },
+  multiMatch: { rw: names => `Nabonye serivisi nyinshi zihuje:\n${names}.\nNi iyihe ushaka kumenya?`, en: names => `I found a few matching services:\n${names}.\nWhich one would you like to know about?`, fr: names => `J'ai trouvé plusieurs services correspondants :\n${names}.\nLequel souhaitez-vous connaître ?` },
+};
+
+function buildLocalResponse(matches, lang) {
+  const ui = UI[lang];
+  if (matches.length === 0) return ui.noMatch;
+  if (matches.length > 1) {
+    const names = matches.map((s, i) => `  ${i + 1}. ${s.name[lang]}`).join('\n');
+    return TEMPLATES.multiMatch[lang](names);
+  }
+  const svc = matches[0];
+  const opt = TEMPLATES.optional[lang];
+  const lines = [
+    TEMPLATES.intro[lang](svc.name[lang]), '',
+    TEMPLATES.reqHeader[lang](),
+    ...svc.requirements.map(r => `  - ${r[lang] || r.en}${r.mandatory ? '' : opt}`),
+    '', TEMPLATES.stepHeader[lang](),
+    ...svc.steps.map((s, i) => `  ${i + 1}. ${s[lang] || s.en}`),
+    '', TEMPLATES.fee[lang](svc.fee_rwf),
+    '', TEMPLATES.closing[lang](),
+  ];
+  return lines.join('\n');
+}
 
 /* API */
 const API = {
@@ -198,126 +285,374 @@ const API = {
       headers: { 'Content-Type': 'application/json' },
     };
     if (body !== null) opts.body = JSON.stringify(body);
-    try {
-      const res = await fetch(url, opts);
-      if (!res.ok) {
-        console.warn(`[API] ${method} ${path} → ${res.status}`);
-        return null;
-      }
-      return await res.json();
-    } catch (err) {
-      console.warn(`[API] ${method} ${path} failed:`, err.message);
+    const res = await fetch(url, opts);
+    if (!res.ok) {
+      console.warn(`[API] ${method} ${path} → ${res.status}`);
       return null;
     }
+    return await res.json();
   },
 
   async _fetchMultipart(path, formData) {
     const url = `${CONFIG.BACKEND_URL}${path}`;
-    try {
-      const res = await fetch(url, { method: 'POST', body: formData });
-      if (!res.ok) {
+    const res = await fetch(url, { method: 'POST', body: formData });
+    if (!res.ok) {
       console.warn(`[API] POST ${path} → ${res.status}`);
       return null;
-      }
-      return res.json();
-    } catch (err) {
-    console.warn(`[API] POST ${path} failed:`, err.message);
-    return null;
     }
+    return res.json();
   },
 
   async checkHealth() {
-    const data = await this._fetch('GET', '/health');
-    return data?.status === 'ok';
+    try {
+      const data = await this._fetch('GET', '/health');
+      return data?.status === 'ok';
+    } catch {
+      return false;
+    }
   },
 
 /* Users */
-  createUser(payload) {  
-    return this._fetch('POST', '/users', payload);
+  async createUser(phoneNumber = null, preferredLanguage = 'rw') {  
+  try {
+    return await this._fetch('POST', '/users', {
+        phone_number:       phoneNumber,
+        preferred_language: preferredLanguage,
+      });
+    } catch (err) {
+      console.error('[API] createUser failed:', err);
+      return null;
+    }
   },
-  lookupUser(payload) {
-    return this._fetch('POST', '/users/lookup', payload);
+  async lookupUser(phonenumber) {
+    try {
+      return await this._fetch('POST', '/users/lookup', {phonenumber: phoneNumber});
+    } catch (err) {
+      console.error('[API] lookupUser failed:', err);
+      return null;
+    }
   },
 
 /* Services */
-  listServices() {
-    return this._fetch('GET', '/services');
+  async listServices() {
+    try {
+      return await this._fetch('GET', '/services');
+    } catch (err) {
+      console.error('[API] listServices failed:', err);
+      return null;
+    }
   },
-  getService(serviceId) {
-    return this._fetch('GET', `/services/${serviceId}`);
+  async getService(serviceId) {
+    try {
+      return await this._fetch('GET', `/services/${serviceId}`);
+    } catch (err) {
+      console.error('[API] getService failed:', err);
+      return null;
+    }
   },
 
 /* Chat */
-  chat(userId, conversationId, message, language) {
-    return this._fetch('POST', '/chat', {
-      user_id: userId,
-      conversation_id: conversationId ?? null,
-      message,
-      language,
-    });
+  async startConversation(userId) {
+    try {
+      return await this._fetch('POST', '/chat/start', { user_id: userId });
+    } catch (err) {
+      console.error('[API] startCoversation failed:', err);
+      return null;
+    }
   },
-  startConversation(userId) {
-    return this._fetch('POST', '/chat/start', { user_id: userId });
-  },
-  saveMessage(conversationId, role, content) {
-    return this._fetch('POST',`/chat/${conversationId}/messages`,{ role, content });
+  saveMessage(conversationId, role, content, language = currentLang) {
+    try {
+      return await this._fetch('POST',`/chat/${conversationId}/messages`,{ role, content, language });
+    } catch (err) {
+      console.error('[API] saveMessage failed:', err);
+      return null;
+    }
   },
 
 /* Application */
-  startApplication(userId, serviceId, conversationId) {
-    return this._fetch('POST', '/applications', {
-      user_id: userId,
-      service_id: serviceId,
-      conversation_id: conversationId ?? null,
-    });
+  async startApplication(userId, serviceId, conversationId = null) {
+    try {
+      return await this._fetch('POST', '/applications/start', {
+        user_id: userId,
+        service_id: serviceId,
+        conversation_id: conversationId,
+      });
+    } catch (err) {
+      console.error('[API] startApplicationFlow failed:', err);
+      return null;
+    }
   },
-  createApplication(userId, serviceId, conversationId) { 
-    return this._fetch('POST', '/applications', {
-      user_id: userId,
-      service_id: serviceId,
-      conversation_id: conversationId ?? null,
-    });
+  async createApplication(userId, serviceId, conversationId) { 
+    try {
+      return await this._fetch('POST', '/applications', {
+        user_id: userId,
+        service_id: serviceId,
+        conversation_id: conversationId ?? null,
+      });
+    } catch (err) {
+      console.error('[API] createApplication failed:', err);
+      return null;
+    }
   },
-  getApplication(applicationId) {
-    return this._fetch('GET', `/applications/${applicationId}`);
+
+  async getApplication(applicationId) {
+    try {
+      return await this._fetch('GET', `/applications/${applicationId}`);
+    } catch (err) {
+      console.error('[API] getApplication failed:', err);
+      return null;
+    }
   },
-  getApplicationDetail(applicationId) {
-    return this._fetch('GET', `/applications/${applicationId}/detail`);
+  async getApplicationDetail(applicationId) {
+    try {
+      return await this._fetch('GET', `/applications/${applicationId}/detail`);
+    } catch (err) {
+      console.error('[API] getApplication failed:', err);
+      return null;
+    }
   },  
-  saveApplicationData(applicationId, requirementId, value) {
-    return this._fetch('PUT',`/applications/${applicationId}/data/${requirementId}`,
+
+  async saveApplicationData(applicationId, requirementId, value) {
+    try {
+      return await this._fetch('PUT',`/applications/${applicationId}/data/${requirementId}`,
       { requirement_id: requirementId, value });
+    } catch (err) {
+      console.error('[API] saveApplicationData failed:', err);
+      return null;
+    }
   },
 
   /* Payment */
-  createPayment(applicationId, amount, gatewayReference = null) {
-    return this._fetch('POST', `/payments/${applicationId}`, {payment_method: 'mobile_money',amount,gateway_reference: gatewayReference,});
+  async createPayment(applicationId, amount, gatewayReference = null) {
+    try {
+      return await this._fetch('POST', `/payments/${applicationId}`, {payment_method: 'mobile_money',amount,gateway_reference: gatewayReference,});
+    } catch (err) {
+      console.error('[API] createPayment failed:', err);
+      return null;
+    }
   },
 
   /* Document upload */
-  uploadDocument(applicationId, file, requirementId = null) {
-    const fd = new FormData();
-    fd.append('file', file);
-    if (requirementId !== null) fd.append('requirement_id', String(requirementId));
-    return this._fetchMultipart(`/uploads/${applicationId}`, fd);
+  async uploadDocument(applicationId, file, requirementId = null) {
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      if (requirementId !== null) fd.append('requirement_id', String(requirementId));
+      return await this._fetchMultipart(`/uploads/${applicationId}`, fd);
+    } catch (err) {
+      console.error('[API] uploadDocument failed:', err);
+      return null;
+    }
   },
 };
 
-/* Session */
-  async function initUser() {
-    const existing = this.getUserId();
-    if (existing) return existing;
+/* Load Service */
+async function loadServicesFromBackend() {
+  const services = await API.listServices();
+  if (!Array.isArray(services)) return;
+  services.forEach(backendSvc => {
+    const localEntry = Object.values(KB).find(
+      k => k.backendName.toLowerCase() === backendSvc.name.toLowerCase()
+    );
+    if (localEntry) {
+      localEntry.backendId = backendSvc.id;
+      if (backendSvc.fee != null) {
+        localEntry.fee_rwf = Number(backendSvc.fee);
+      }
+    }
+  });
+  console.log('[KB] backendId values synced from GET /services');
+}
 
-    if (backendOnline) {
-     const created = await API.createUser({ language: currentLang, guest: true });
-      if (created?.id != null) {
+/* Chat Pipeline */
+let currentLang   = 'en';
+let isBusy        = false;
+let backendOnline = false;
+
+async function ensureConversation() {
+  if (SESSION.conversationId) return SESSION.conversationId;
+  const userId = SESSION.getUserId() ?? CONFIG.GUEST_USER_ID;
+  const conv   = await API.startConversation(userId);
+  if (conv?.id) {
+    SESSION.conversationId = conv.id;
+    SESSION.updateSessionDisplay();
+  }
+  return SESSION.conversationId;
+}
+
+async function sendMessage() {
+  const raw = textInput.value.trim();
+  if (!raw || isBusy) return;
+
+  textInput.value = '';
+  autoGrow(textInput);
+  isBusy           = true;
+  sendBtn.disabled = true;
+
+  const detected = detectLanguage(raw);
+  if (detected !== currentLang) setLanguage(detected, false);
+
+  appendMessage('citizen', raw);
+  showTyping();
+  const convId = await ensureConversation();
+  if (convId) {
+    API.saveMessage(convId, 'user', raw, currentLang).catch(() => {});
+  }
+
+  let replyText; 
+  let grounded   = false;
+  let usedBackend = false;
+
+  if (convId && backendOnline) {
+    try {
+      const backendReply = await API.getChatReply(convId, raw, currentLang);
+      if (backendReply?.content) {
+        replyText   = backendReply.content;
+        grounded    = true;
+        usedBackend = true;
+      }
+    } catch (err) {
+      console.warn('[chat] getChatReply failed, using local fallback:', err);
+    }
+  }
+  if (!usedBackend) {
+    await new Promise(r => setTimeout(r, 600 + Math.random() * 400));
+    const matches = retrieveServices(raw, currentLang);
+    replyText = buildLocalResponse(matches, currentLang);
+    grounded  = matches.length === 1;
+    if (matches.length === 1) showServiceCard(matches[0]);
+  }
+
+  hideTyping();
+  appendMessage('assistant', replyText, { badge: grounded });
+
+  if (convId) {
+    API.saveMessage(convId, 'assistant', replyText, currentLang).catch(() => {});
+  }
+
+  speak(replyText, currentLang);
+  isBusy           = false;
+  sendBtn.disabled = false;
+  textInput.focus();
+}
+
+/* Text-to-Speech and Speech-to-Text */
+let speakEnabled = true;
+
+function speak(text, lang) {
+  if (!speakEnabled || !('speechSynthesis' in window)) return;
+  const clean = text.replace(/\*\*([^*]+)\*\*/g, '$1');
+  try {
+    window.speechSynthesis.cancel();
+    const utter  = new SpeechSynthesisUtterance(clean);
+    utter.lang   = LANG_CODES[lang] || 'en-US';
+    utter.rate   = 0.95;
+    const voices = window.speechSynthesis.getVoices();
+    const match  = voices.find(v => v.lang === utter.lang)
+                || voices.find(v => v.lang.startsWith(lang));
+    if (match) utter.voice = match;
+    window.speechSynthesis.speak(utter);
+  } catch (_) {}
+}
+let isRecording = false;
+let recognizer  = null;
+
+function initSpeechRecognition() {
+  const SRImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SRImpl) return;
+
+  recognizer                = new SRImpl();
+  recognizer.continuous     = false;
+  recognizer.interimResults = false;
+
+  recognizer.onstart = () => {
+    isRecording = true;
+    micBtn.classList.add('recording');
+    micBtn.setAttribute('aria-pressed', 'true');
+    voiceNoteEl.textContent = UI[currentLang].listening;
+  };
+  recognizer.onresult = event => {
+    textInput.value = event.results[0][0].transcript;
+    sendMessage();
+  };
+  recognizer.onerror = event => {
+    voiceNoteEl.textContent = event.error;
+  };
+  recognizer.onend = () => {
+    isRecording = false;
+    micBtn.classList.remove('recording');
+    micBtn.setAttribute('aria-pressed', 'false');
+    setTimeout(() => { voiceNoteEl.textContent = ''; }, 2500);
+  };
+}
+
+function toggleMic() {
+  if (!recognizer) { voiceNoteEl.textContent = UI[currentLang].noSpeech; return; }
+  if (isRecording) {
+    recognizer.stop();
+  } else {
+    recognizer.lang = LANG_CODES[currentLang] || 'en-US';
+    try { recognizer.start(); } catch (_) {}
+  }
+}
+
+/* Session */
+  const SESSION = {
+  STORAGE_KEY_USER:  'govagent_user_id',
+  STORAGE_KEY_PHONE: 'govagent_phone',   
+
+  getUserId() {
+    const stored = localStorage.getItem(this.STORAGE_KEY_USER);
+    if (stored) return Number(stored);
+    return null;
+  },
+
+  saveUserId(id) {
+    localStorage.setItem(this.STORAGE_KEY_USER, String(id));
+  },
+  getPhone() {
+    return localStorage.getItem(this.STORAGE_KEY_PHONE) || null;
+  },
+  savePhone(phone) {
+    localStorage.setItem(this.STORAGE_KEY_PHONE, phone);
+  },
+
+  conversationId: null,
+
+  async initUser() {
+    const existingId = this.getUserId();
+    if (existingId) return existingId;
+    const phone = this.getPhone();
+
+    try {
+      if (phone) {
+        const found = await API.lookupUser(phone);
+        if (found?.id) {
+          this.saveUserId(found.id);
+          return found.id;
+        }
+      }
+
+    const created = await API.createUser({ language: currentLang, guest: true });
+      if (created?.id) {
         this.saveUserId(created.id);
         return created.id;
       }
-    }  
+    } catch (err) {
+        console.warn('[SESSION] initUser failed, falling back to GUEST_USER_ID:', err);
+    }
     this.saveUserId(CONFIG.GUEST_USER_ID);
     return CONFIG.GUEST_USER_ID;
-  } 
+  },
+  updateSessionDisplay() {
+    const userEl = document.getElementById('session-user-id');
+    const convEl = document.getElementById('session-conv-id');
+    if (userEl) userEl.textContent = `${UI[currentLang].sessionLabel} #${this.getUserId() ?? '—'}`;
+    if (convEl) convEl.textContent = this.conversationId
+      ? `${UI[currentLang].convLabel} #${this.conversationId}`
+      : '';
+  },
+};
 
 async function identify(phoneNumber) {
   let user = await API.lookupUser(phoneNumber); 
