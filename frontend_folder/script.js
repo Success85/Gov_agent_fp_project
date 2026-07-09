@@ -758,7 +758,135 @@ async function sendMessage() {
   textInput.focus();
 }
 
-/* DOM references */
+/* Sidebar */
+function setLanguage(lang) {
+  currentLang = lang;
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    const active = btn.dataset.lang === lang;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
+  });
+
+  const ui = UI[lang];
+  textInput.placeholder         = ui.placeholder;
+  statusText.textContent        = backendOnline ? ui.statusOnline : ui.statusOffline;
+  quickHeading.textContent      = ui.quickHeading;
+  voicePanelHeading.textContent = ui.voiceHeading;
+  voicePanelNote.textContent    = ui.voiceNote;
+  infoHeading.textContent       = ui.infoHeading;
+  infoNote.textContent          = ui.infoNote;
+  voiceToggleLabel.textContent  = speakEnabled ? ui.voiceOn : ui.voiceOff;
+
+  buildQuickList();
+  SESSION.updateSessionDisplay();
+
+  if (!serviceCard.hidden) {
+    const id = serviceCard.dataset.serviceId;
+    if (id && KB[id]) showServiceCard(KB[id]);
+  }
+}
+
+/* Language Switcher */
+function setLanguage(lang) {
+  currentLang = lang;
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    const active = btn.dataset.lang === lang;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
+  });
+
+  const ui = UI[lang];
+  textInput.placeholder         = ui.placeholder;
+  statusText.textContent        = backendOnline ? ui.statusOnline : ui.statusOffline;
+  quickHeading.textContent      = ui.quickHeading;
+  voicePanelHeading.textContent = ui.voiceHeading;
+  voicePanelNote.textContent    = ui.voiceNote;
+  infoHeading.textContent       = ui.infoHeading;
+  infoNote.textContent          = ui.infoNote;
+  voiceToggleLabel.textContent  = speakEnabled ? ui.voiceOn : ui.voiceOff;
+
+  buildQuickList();
+  SESSION.updateSessionDisplay();
+
+  if (!serviceCard.hidden) {
+    const id = serviceCard.dataset.serviceId;
+    if (id && KB[id]) showServiceCard(KB[id]);
+  }
+}
+
+/* DOM Helpers and references */
+function formatTime(date) {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function renderMarkdown(container, text) {
+  text.split(/(\*\*[^*]+\*\*)/g).forEach(part => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      const s = document.createElement('strong');
+      s.textContent = part.slice(2, -2);
+      container.appendChild(s);
+    } else {
+      container.appendChild(document.createTextNode(part));
+    }
+  });
+}
+
+function appendMessage(sender, text, opts = {}) {
+  const msg     = document.createElement('div');
+  msg.className = `msg ${sender}`;
+
+  const bubble     = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  sender === 'assistant' ? renderMarkdown(bubble, text) : (bubble.textContent = text);
+  msg.appendChild(bubble);
+
+  if (opts.badge !== undefined) {
+    const badge       = document.createElement('span');
+    badge.className   = `grounding-badge ${opts.badge ? 'verified' : 'general'}`;
+    badge.textContent = opts.badge ? UI[currentLang].badgeVerified : UI[currentLang].badgeGeneral;
+    msg.appendChild(badge);
+  }
+
+  if (sender !== 'system') {
+    const time       = document.createElement('span');
+    time.className   = 'msg-time';
+    time.textContent = formatTime(new Date());
+    msg.appendChild(time);
+  }
+
+  messagesEl.appendChild(msg);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return msg;
+}
+
+function showTyping() {
+  typingRow.hidden = false;
+  typingRow.removeAttribute('aria-hidden');
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+function hideTyping() {
+  typingRow.hidden = true;
+  typingRow.setAttribute('aria-hidden', 'true');
+}
+
+function setStatusBar(online) {
+  backendOnline = online;
+  const indicator = document.querySelector('.status-indicator');
+  if (indicator) indicator.style.background = online ? 'var(--success)' : '#e8a800';
+  if (statusText) {
+    statusText.textContent = online
+      ? UI[currentLang].statusOnline
+      : UI[currentLang].statusOffline;
+  }
+}
+
 const messagesEl        = document.getElementById('messages');
 const typingRow         = document.getElementById('typing-row');
 const textInput         = document.getElementById('text-input');
@@ -813,7 +941,6 @@ async function init() {
 ]);
   setLanguage('en');
   appendMessage('assistant', UI.en.greeting);
-
   SESSION.updateSessionDisplay();
 }
 
