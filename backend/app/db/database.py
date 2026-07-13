@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from app.db.base import Base
+from app.models.application import Application, ApplicationData
 
 load_dotenv()
 
