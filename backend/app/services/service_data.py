@@ -162,22 +162,15 @@ def get_full_service_context(
     service_id: int,
     db: Session
 ) -> dict:
-    """
-    Fetch everything about a service in one call.
-    Returns service details, requirements, and steps together.
-    This is the single most important function for AI grounding —
-    Davy calls this once to get everything needed to build
-    a grounded prompt for the AI model.
-    """
+   
     try:
         service = get_service_by_id(service_id=service_id, db=db)
 
         if not service:
-            logger.warning(
-                f"Cannot get context — "
-                f"service id={service_id} not found"
+            raise ValueError(
+                f"Service with id={service_id} not found. "
+                f"Cannot build grounding context for AI."
             )
-            return {}
 
         requirements = get_requirements_by_service_id(
             service_id=service_id,
@@ -189,6 +182,18 @@ def get_full_service_context(
             db=db
         )
 
+        if not requirements:
+            raise ValueError(
+                f"Service id={service_id} has no requirements. "
+                f"Cannot ground AI response without verified requirements."
+            )
+
+        if not steps:
+            raise ValueError(
+                f"Service id={service_id} has no steps. "
+                f"Cannot ground AI response without verified steps."
+            )
+
         context = {
             "service": {
                 "id": service.id,
@@ -196,7 +201,7 @@ def get_full_service_context(
                 "name_rw": service.name_rw,
                 "category": service.category,
                 "description": service.description,
-                "fee": float(service.fee),
+                "fee": str(service.fee),
                 "processing_days": service.processing_days
             },
             "requirements": [
@@ -220,9 +225,13 @@ def get_full_service_context(
         }
 
         logger.info(
-            f"Full context retrieved for service_id={service_id}"
+            f"Full context retrieved for service_id={service_id} "
+            f"— {len(requirements)} requirements, {len(steps)} steps"
         )
         return context
+
+    except ValueError:
+        raise
 
     except Exception as e:
         logger.error(f"Error fetching full service context: {e}")
