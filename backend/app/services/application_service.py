@@ -102,10 +102,45 @@ def upsert_application_data(
     application_id: int,
     field_name: str,
     field_value: str,
-    db: Session
+    db: Session,
+    skip_validation: bool = False
 ) -> ApplicationData:
-  
+   
     try:
+        if not skip_validation:
+            application = get_application_by_id(
+                application_id=application_id,
+                db=db
+            )
+
+            if not application:
+                raise ValueError(
+                    f"Application id={application_id} not found."
+                )
+
+            from app.services.service_data import (
+                get_requirements_by_service_id
+            )
+            requirements = get_requirements_by_service_id(
+                service_id=application.service_id,
+                db=db
+            )
+
+            valid_field_names = [
+                r.name.strip().lower()
+                for r in requirements
+            ]
+
+            cleaned_field_name = field_name.strip().lower()
+
+            if cleaned_field_name not in valid_field_names:
+                raise ValueError(
+                    f"Invalid field '{field_name}' for "
+                    f"application id={application_id}. "
+                    f"Valid fields for this service are: "
+                    f"{valid_field_names}"
+                )
+
         existing = db.query(ApplicationData).filter(
             ApplicationData.application_id == application_id,
             ApplicationData.field_name == field_name.strip().lower()
@@ -116,7 +151,7 @@ def upsert_application_data(
             db.commit()
             db.refresh(existing)
             logger.info(
-                f"Updated field {field_name} "
+                f"Updated field '{field_name}' "
                 f"for application_id={application_id}"
             )
             return existing
@@ -130,16 +165,18 @@ def upsert_application_data(
         db.commit()
         db.refresh(new_data)
         logger.info(
-            f"Created field {field_name} "
+            f"Created field '{field_name}' "
             f"for application_id={application_id}"
         )
         return new_data
+
+    except ValueError:
+        raise
 
     except Exception as e:
         db.rollback()
         logger.error(f"Error upserting application data: {e}")
         raise
-
 
 def get_application_data(
     application_id: int,
