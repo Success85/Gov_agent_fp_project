@@ -2,16 +2,52 @@ import logging
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from app.models.conversation import Conversation
+from datetime import datetime, timezone, timedelta
 
 logger = logging.getLogger(__name__)
+
+SESSION_TIMEOUT_MINUTES = 30
 
 
 def create_conversation(
     user_id: int,
     db: Session
-) -> Conversation:
+) -> tuple[Conversation, bool]:
+    rns (conversation, created) 
     
     try:
+        existing = get_active_conversation(
+            user_id=user_id,
+            db=db
+        )
+
+        if existing:
+            now = datetime.now(timezone.utc)
+            
+            started_at = existing.started_at
+            if started_at.tzinfo is None:
+                started_at = started_at.replace(tzinfo=timezone.utc)
+            
+            time_since_start = now - started_at
+            session_limit = timedelta(minutes=SESSION_TIMEOUT_MINUTES)
+
+            if time_since_start <= session_limit:
+                logger.info(
+                    f"Resuming active conversation "
+                    f"id={existing.id} for user_id={user_id}. "
+                    f"Started {time_since_start} ago."
+                )
+                return existing, False
+            else:
+                existing.status = "abandoned"
+                existing.ended_at = now
+                db.commit()
+                logger.info(
+                    f"Abandoned stale conversation "
+                    f"id={existing.id} for user_id={user_id}. "
+                    f"Started {time_since_start} ago — past timeout."
+                )
+
         conversation = Conversation(
             user_id=user_id,
             status="active"
@@ -23,7 +59,7 @@ def create_conversation(
             f"New conversation created id={conversation.id} "
             f"for user_id={user_id}"
         )
-        return conversation
+        return conversation, True
 
     except Exception as e:
         db.rollback()
