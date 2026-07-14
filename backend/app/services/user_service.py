@@ -11,10 +11,7 @@ def create_user(
     preferred_language: str = "rw",
     db: Session = None
 ) -> User:
-    """
-    Create a new citizen user account.
-    Raises ValueError if phone number already exists.
-    """
+   
     try:
         user = User(
             phone_number=phone_number,
@@ -28,10 +25,16 @@ def create_user(
 
     except IntegrityError:
         db.rollback()
-        logger.warning(f"Duplicate phone number attempted: {phone_number}")
-        raise ValueError(
-            f"A user with phone number {phone_number} already exists"
+        
+        logger.warning(
+            f"Registration attempt with already registered "
+            f"phone number. user_id not created."
         )
+        raise ValueError(
+            "This phone number is already registered. "
+            "Please log in instead."
+        )
+
     except Exception as e:
         db.rollback()
         logger.error(f"Error creating user: {e}")
@@ -39,10 +42,7 @@ def create_user(
 
 
 def get_user_by_phone(phone_number: str, db: Session) -> User | None:
-    """
-    Fetch a user by their phone number.
-    Returns None if not found.
-    """
+    
     try:
         user = db.query(User).filter(
             User.phone_number == phone_number
@@ -58,10 +58,7 @@ def get_user_by_phone(phone_number: str, db: Session) -> User | None:
 
 
 def get_user_by_id(user_id: int, db: Session) -> User | None:
-    """
-    Fetch a user by their ID.
-    Returns None if not found.
-    """
+   
     try:
         user = db.query(User).filter(User.id == user_id).first()
 
@@ -79,12 +76,7 @@ def get_or_create_user(
     preferred_language: str = "rw",
     db: Session = None
 ) -> tuple[User, bool]:
-    """
-    Fetch a user by phone number.
-    If they do not exist create them.
-    Returns a tuple of (user, created)
-    where created is True if a new user was made.
-    """
+    
     try:
         user = get_user_by_phone(phone_number=phone_number, db=db)
         if user:
