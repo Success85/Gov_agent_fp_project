@@ -11,9 +11,9 @@ from app.models.requirement import Requirement
 from app.models.steps import Step
 from app.models.conversation import Conversation
 from app.models.message import Message
+from app.models.application import Application, ApplicationData
 
 logger = logging.getLogger(__name__)
-
 
 def clear_all_tables(db):
     """
@@ -23,6 +23,8 @@ def clear_all_tables(db):
     try:
         db.query(Message).delete()
         db.query(Conversation).delete()
+        db.query(ApplicationData).delete()
+        db.query(Application).delete()
         db.query(Requirement).delete()
         db.query(Step).delete()
         db.query(Service).delete()
@@ -162,7 +164,6 @@ def seed_requirements(db, services):
 
 def seed_steps(db, services):
     """
-    Create verified steps for each service.
     Note: update content when Alvin delivers
     verified Irembo data files.
     """
@@ -304,6 +305,84 @@ def seed_messages(db, conversations):
     logger.info(f"Seeded {len(messages)} messages")
     return messages
 
+    
+def seed_applications(db, users, services):
+    
+    national_id = services[0]
+    birth_cert = services[1]
+
+    applications = [
+        Application(
+            user_id=users[0].id,
+            service_id=national_id.id,
+            status="submitted",
+            reference_number="GOV-2026-00001"
+        ),
+        Application(
+            user_id=users[1].id,
+            service_id=birth_cert.id,
+            status="in_progress",
+            reference_number=None
+        ),
+    ]
+
+    for application in applications:
+        db.add(application)
+
+    db.commit()
+    logger.info(f"Seeded {len(applications)} applications")
+    return applications
+
+
+def seed_application_data(db, applications):
+    
+    national_id_app = applications[0]
+    birth_cert_app = applications[1]
+
+    application_data = [
+        # Completed National ID application answers
+        ApplicationData(
+            application_id=national_id_app.id,
+            field_name="full_name",
+            field_value="Aline Uwase"
+        ),
+        ApplicationData(
+            application_id=national_id_app.id,
+            field_name="date_of_birth",
+            field_value="1995-03-15"
+        ),
+        ApplicationData(
+            application_id=national_id_app.id,
+            field_name="district",
+            field_value="Kigali"
+        ),
+        ApplicationData(
+            application_id=national_id_app.id,
+            field_name="sector",
+            field_value="Nyarugenge"
+        ),
+
+        # Partial Birth Certificate answers
+        ApplicationData(
+            application_id=birth_cert_app.id,
+            field_name="child_name",
+            field_value="Kalisa Jean"
+        ),
+        ApplicationData(
+            application_id=birth_cert_app.id,
+            field_name="birth_date",
+            field_value="2026-01-10"
+        ),
+    ]
+
+    for data in application_data:
+        db.add(data)
+
+    db.commit()
+    logger.info(
+        f"Seeded {len(application_data)} application data entries"
+    )
+    return application_data
 
 def run_seed():
     """
