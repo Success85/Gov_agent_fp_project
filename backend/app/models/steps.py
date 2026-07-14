@@ -12,6 +12,14 @@ class Step(Base):
     instruction = Column(Text, nullable=False)
     instruction_rw = Column(Text, nullable=False)
 
+    __table_args__ = (
+        UniqueConstraint(
+            "service_id",
+            "step_no",
+            name="uq_service_step_no"
+        ),
+    )
+
     # Relationships
     service = relationship("Service", back_populates="steps")
 

@@ -40,24 +40,13 @@ class Service(Base):
         return fee
 
     @validates("category")
+
     def validate_category(self, key, category):
-        category = category.strip().title()
-        allowed = [
-            "Identification",
-            "Family",
-            "Health",
-            "Business",
-            "Land",
-            "Education",
-            "Transport",
-            "Other"
-        ]
-        if category not in allowed:
-            raise ValueError(
-                f"Invalid category: {category}. "
-                f"Allowed categories are: {allowed}"
-            )
-        return category
+        if not category:
+           raise ValueError("Category cannot be empty")
+    # Clean up capitalisation and whitespace
+    category = category.strip().title()
+    return category
 
     @validates("processing_days")
     def validate_processing_days(self, key, days):

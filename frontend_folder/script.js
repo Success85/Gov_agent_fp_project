@@ -464,22 +464,56 @@ async function loadServicesFromBackend() {
   console.log('[KB] backendId values synced from GET /services');
 }
 
+/* Session */
+  const SESSION = {
+  STORAGE_KEY_USER:  'govagent_user_id',
+  STORAGE_KEY_PHONE: 'govagent_phone',   
+
+  getUserId()      { const stored = localStorage.getItem(this.STORAGE_KEY_USER); return stored ? Number(stored) : null; },
+  saveUserId(id)   { localStorage.setItem(this.STORAGE_KEY_USER, String(id)); },
+  getPhone()       { return localStorage.getItem(this.STORAGE_KEY_PHONE) || null; },
+  savePhone(phone) { localStorage.setItem(this.STORAGE_KEY_PHONE, phone); },
+
+  conversationId: null,
+
+  async initUser() {
+    const existingId = this.getUserId();
+    if (existingId) return existingId;
+    const phone = this.getPhone();
+    try {
+      if (phone) {
+        const found = await API.lookupUser(phone);
+        if (found?.id) {
+          this.saveUserId(found.id);
+          return found.id;
+        }
+      }
+
+    const created = await API.createUser({ language: currentLang, guest: true });
+      if (created?.id) {
+        this.saveUserId(created.id);
+        return created.id;
+      }
+    } catch (err) {
+        console.warn('[SESSION] initUser failed, falling back to GUEST_USER_ID:', err);
+    }
+    this.saveUserId(CONFIG.GUEST_USER_ID);
+    return CONFIG.GUEST_USER_ID;
+  },
+  updateSessionDisplay() {
+    const userEl = document.getElementById('session-user-id');
+    const convEl = document.getElementById('session-conv-id');
+    if (userEl) userEl.textContent = `${UI[currentLang].sessionLabel} #${this.getUserId() ?? '—'}`;
+    if (convEl) convEl.textContent = this.conversationId
+      ? `${UI[currentLang].convLabel} #${this.conversationId}`
+      : '';
+  },
+};
+
 /* Chat Pipeline */
-let currentLang   = 'en';
+let currentLang   = 'rw';
 let isBusy        = false;
 let backendOnline = false;
-
-async function ensureConversation() {
-  if (SESSION.conversationId) return SESSION.conversationId;
-  const userId = SESSION.getUserId() ?? CONFIG.GUEST_USER_ID;
-  const conv   = await API.startConversation(userId);
-  if (conv?.id) {
-    SESSION.conversationId = conv.id;
-    SESSION.updateSessionDisplay();
-  }
-  return SESSION.conversationId;
-}
-
 async function sendMessage() {
   const raw = textInput.value.trim();
   if (!raw || isBusy) return;
@@ -490,46 +524,60 @@ async function sendMessage() {
   sendBtn.disabled = true;
 
   const detected = detectLanguage(raw);
-  if (detected !== currentLang) setLanguage(detected, false);
+  if (detected !== currentLang) setLanguage(detected);
 
   appendMessage('citizen', raw);
   showTyping();
-  const convId = await ensureConversation();
-  if (convId) {
-    API.saveMessage(convId, 'user', raw, currentLang).catch(() => {});
-  }
-
-  let replyText; 
+  let replyText = null; 
   let grounded   = false;
-  let usedBackend = false;
-
-  if (convId && backendOnline) {
+  if (CONFIG.USE_BACKEND_CHAT && backendOnline) {
     try {
-      const backendReply = await API.getChatReply(convId, raw, currentLang);
-      if (backendReply?.content) {
-        replyText   = backendReply.content;
-        grounded    = true;
-        usedBackend = true;
+      const userId = SESSION.getUserId() ?? CONFIG.GUEST_USER_ID;
+      const reply = await API.chatWithAI(
+          raw,
+          userId,
+          SESSION.conversationId,
+          currentLang
+        );
+
+        if (reply?.assistant_message) {
+          replyText = reply.assistant_message;
+          grounded  = true; 
+          
+          if (reply.conversation_id) SESSION.conversationId = reply.conversation_id;
+          if (reply.user_id)         SESSION.saveUserId(reply.user_id);
+          if (reply.service_name) {
+          const matched = Object.values(KB).find(
+            k => k.backendName.toLowerCase() === reply.service_name.toLowerCase()
+          );
+          if (matched) {
+            if (reply.service_id) {
+              matched.backendId      = reply.service_id;
+              activeServiceBackendId = reply.service_id;
+            }
+            showServiceCard(matched);
+            applyBtn.hidden = false;
+          }
+        }
       }
     } catch (err) {
-      console.warn('[chat] getChatReply failed, using local fallback:', err);
+      console.warn('[chat] backend failed, using local fallback:', err);
     }
   }
-  if (!usedBackend) {
-    await new Promise(r => setTimeout(r, 600 + Math.random() * 400));
+  if (!replyText) {
+    await new Promise(r => setTimeout(r, 650 + Math.random() * 400));
     const matches = retrieveServices(raw, currentLang);
     replyText = buildLocalResponse(matches, currentLang);
     grounded  = matches.length === 1;
-    if (matches.length === 1) showServiceCard(matches[0]);
+    if (matches.length === 1) {
+      showServiceCard(matches[0]);
+      applyBtn.hidden = !matches[0].backendId;
+      if (matches[0].backendId) activeServiceBackendId = matches[0].backendId;
+    }
   }
 
   hideTyping();
   appendMessage('assistant', replyText, { badge: grounded });
-
-  if (convId) {
-    API.saveMessage(convId, 'assistant', replyText, currentLang).catch(() => {});
-  }
-
   speak(replyText, currentLang);
   isBusy           = false;
   sendBtn.disabled = false;
@@ -560,7 +608,6 @@ let recognizer  = null;
 function initSpeechRecognition() {
   const SRImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SRImpl) return;
-
   recognizer                = new SRImpl();
   recognizer.continuous     = false;
   recognizer.interimResults = false;
@@ -596,123 +643,7 @@ function toggleMic() {
   }
 }
 
-/* Session */
-  const SESSION = {
-  STORAGE_KEY_USER:  'govagent_user_id',
-  STORAGE_KEY_PHONE: 'govagent_phone',   
-
-  getUserId() {
-    const stored = localStorage.getItem(this.STORAGE_KEY_USER);
-    if (stored) return Number(stored);
-    return null;
-  },
-
-  saveUserId(id) {
-    localStorage.setItem(this.STORAGE_KEY_USER, String(id));
-  },
-  getPhone() {
-    return localStorage.getItem(this.STORAGE_KEY_PHONE) || null;
-  },
-  savePhone(phone) {
-    localStorage.setItem(this.STORAGE_KEY_PHONE, phone);
-  },
-
-  conversationId: null,
-
-  async initUser() {
-    const existingId = this.getUserId();
-    if (existingId) return existingId;
-    const phone = this.getPhone();
-
-    try {
-      if (phone) {
-        const found = await API.lookupUser(phone);
-        if (found?.id) {
-          this.saveUserId(found.id);
-          return found.id;
-        }
-      }
-
-    const created = await API.createUser({ language: currentLang, guest: true });
-      if (created?.id) {
-        this.saveUserId(created.id);
-        return created.id;
-      }
-    } catch (err) {
-        console.warn('[SESSION] initUser failed, falling back to GUEST_USER_ID:', err);
-    }
-    this.saveUserId(CONFIG.GUEST_USER_ID);
-    return CONFIG.GUEST_USER_ID;
-  },
-  updateSessionDisplay() {
-    const userEl = document.getElementById('session-user-id');
-    const convEl = document.getElementById('session-conv-id');
-    if (userEl) userEl.textContent = `${UI[currentLang].sessionLabel} #${this.getUserId() ?? '—'}`;
-    if (convEl) convEl.textContent = this.conversationId
-      ? `${UI[currentLang].convLabel} #${this.conversationId}`
-      : '';
-  },
-};
-
-/* Sidebar */
-function setLanguage(lang) {
-  currentLang = lang;
-
-  document.querySelectorAll('.lang-btn').forEach(btn => {
-    const active = btn.dataset.lang === lang;
-    btn.classList.toggle('active', active);
-    btn.setAttribute('aria-pressed', String(active));
-  });
-
-  const ui = UI[lang];
-  textInput.placeholder         = ui.placeholder;
-  statusText.textContent        = backendOnline ? ui.statusOnline : ui.statusOffline;
-  quickHeading.textContent      = ui.quickHeading;
-  voicePanelHeading.textContent = ui.voiceHeading;
-  voicePanelNote.textContent    = ui.voiceNote;
-  infoHeading.textContent       = ui.infoHeading;
-  infoNote.textContent          = ui.infoNote;
-  voiceToggleLabel.textContent  = speakEnabled ? ui.voiceOn : ui.voiceOff;
-
-  buildQuickList();
-  SESSION.updateSessionDisplay();
-
-  if (!serviceCard.hidden) {
-    const id = serviceCard.dataset.serviceId;
-    if (id && KB[id]) showServiceCard(KB[id]);
-  }
-}
-
-/* Language Switcher */
-function setLanguage(lang) {
-  currentLang = lang;
-
-  document.querySelectorAll('.lang-btn').forEach(btn => {
-    const active = btn.dataset.lang === lang;
-    btn.classList.toggle('active', active);
-    btn.setAttribute('aria-pressed', String(active));
-  });
-
-  const ui = UI[lang];
-  textInput.placeholder         = ui.placeholder;
-  statusText.textContent        = backendOnline ? ui.statusOnline : ui.statusOffline;
-  quickHeading.textContent      = ui.quickHeading;
-  voicePanelHeading.textContent = ui.voiceHeading;
-  voicePanelNote.textContent    = ui.voiceNote;
-  infoHeading.textContent       = ui.infoHeading;
-  infoNote.textContent          = ui.infoNote;
-  voiceToggleLabel.textContent  = speakEnabled ? ui.voiceOn : ui.voiceOff;
-
-  buildQuickList();
-  SESSION.updateSessionDisplay();
-
-  if (!serviceCard.hidden) {
-    const id = serviceCard.dataset.serviceId;
-    if (id && KB[id]) showServiceCard(KB[id]);
-  }
-}
-
-/* DOM Helpers and references */
+/* DOM Helpers */
 function formatTime(date) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
@@ -783,6 +714,108 @@ function setStatusBar(online) {
   }
 }
 
+/* Sidebar */
+function setLanguage(lang) {
+  const ui = UI[currentLang];
+  const L  = currentLang;
+
+      serviceCardEl.dataset.serviceId = svc.id;
+  serviceCardEl.hidden  = false;
+  quickPanel.hidden     = true;
+  uploadPanel.hidden    = true;
+
+  scLabel.textContent         = ui.scLabel;
+  scTitle.textContent         = svc.name[L];
+  scFee.textContent           = Number(svc.fee_rwf).toLocaleString() + ui.feeSuffix;
+  scReqHeading.textContent    = ui.scReqHeading;
+  scStepsHeading.textContent  = ui.scStepsHeading;
+  scSourceText.textContent    = ui.scSource;
+  applyBtn.textContent        = ui.applyBtn;
+
+  scRequirements.innerHTML = '';
+  svc.requirements.forEach(r => {
+    const li = document.createElement('li');
+    if (!r.mandatory) li.classList.add('optional');
+    li.textContent = (r[L] || r.en) + (r.mandatory ? '' : ` ${ui.optional}`);
+    scRequirements.appendChild(li);
+  });
+
+  scSteps.innerHTML = '';
+  svc.steps.forEach(s => {
+    const li       = document.createElement('li');
+    li.textContent = s[L] || s.en;
+    scSteps.appendChild(li);
+  });
+}
+
+function buildQuickList() {
+  quickList.innerHTML = '';
+  Object.values(KB).forEach(svc => {
+    const btn     = document.createElement('button');
+    btn.type      = 'button';
+    btn.className = 'quick-chip';
+    btn.setAttribute('role', 'listitem');
+    btn.innerHTML = `${svc.name[currentLang]}<span class="quick-chip-category">${svc.category[currentLang]}</span>`;
+    btn.addEventListener('click', () => {
+      textInput.value = svc.name[currentLang];
+      sendMessage();
+    });
+    quickList.appendChild(btn);
+  });
+}
+
+async function loadServicesFromBackend() {
+  const services = await API.listServices();
+  if (!Array.isArray(services)) return;
+  services.forEach(s => {
+    const entry = Object.values(KB).find(k => k.backendName.toLowerCase() === s.name.toLowerCase());
+    if (entry) {
+      entry.backendId = s.id;
+      if (s.fee != null) entry.fee_rwf = Number(s.fee);
+    }
+  });
+}
+
+/* Language Switcher */
+function setLanguage(lang) {
+  currentLang = lang;
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    const active = btn.dataset.lang === lang;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
+  });
+
+  const ui = UI[lang];
+  textInput.placeholder         = ui.placeholder;
+  statusText.textContent        = backendOnline ? ui.statusOnline : ui.statusOffline;
+  quickHeading.textContent      = ui.quickHeading;
+  voicePanelHeading.textContent = ui.voiceHeading;
+  voicePanelNote.textContent    = ui.voiceNote;
+  infoHeading.textContent       = ui.infoHeading;
+  infoNote.textContent          = ui.infoNote;
+  voiceToggleLabel.textContent  = speakEnabled ? ui.voiceOn : ui.voiceOff;
+  if (applyBtn) applyBtn.textContent = ui.applyBtn;
+
+  buildQuickList();
+  SESSION.updateSessionDisplay();
+
+  if (!serviceCard.hidden) {
+    const id = serviceCard.dataset.serviceId;
+    if (id && KB[id]) showServiceCard(KB[id]);
+  }
+
+  if (!uploadPanel.hidden) {
+    uploadHeadingEl.textContent = ui.uploadHeading;
+    uploadIntroEl.textContent   = ui.uploadIntro;
+    uploadSubmitBtn.textContent = ui.uploadSubmit;
+    uploadCancelBtn.textContent = ui.uploadCancel;
+  }
+
+  if (recognizer) recognizer.lang = LANG_CODES[lang] || 'en-US';
+}
+
+/*DOM References */
 const messagesEl        = document.getElementById('messages');
 const typingRow         = document.getElementById('typing-row');
 const textInput         = document.getElementById('text-input');
@@ -802,6 +835,15 @@ const scSteps           = document.getElementById('sc-steps');
 const scReqHeading      = document.getElementById('sc-req-heading');
 const scStepsHeading    = document.getElementById('sc-steps-heading');
 const scSourceText      = document.getElementById('sc-source-text');
+const applyBtn          = document.getElementById('apply-btn');
+const uploadPanel       = document.getElementById('upload-panel');
+const uploadHeadingEl   = document.getElementById('upload-heading');
+const uploadIntroEl     = document.getElementById('upload-intro');
+const uploadRefEl       = document.getElementById('upload-ref');
+const uploadFieldsEl    = document.getElementById('upload-fields');
+const uploadSubmitBtn   = document.getElementById('upload-submit-btn');
+const uploadCancelBtn   = document.getElementById('upload-cancel-btn');
+const uploadStatusEl    = document.getElementById('upload-status');
 const voiceToggle       = document.getElementById('voice-toggle');
 const voiceToggleLabel  = document.getElementById('voice-toggle-label');
 const voicePanelHeading = document.getElementById('voice-panel-heading');
@@ -824,20 +866,24 @@ voiceToggle.addEventListener('click', () => {
   voiceToggleLabel.textContent = speakEnabled ? UI[currentLang].voiceOn : UI[currentLang].voiceOff;
   if (!speakEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel();
 });
+applyBtn.addEventListener('click', startApplication);
+uploadSubmitBtn.addEventListener('click', submitUploads);
+uploadCancelBtn.addEventListener('click', () => {
+  uploadPanel.hidden = true;
+  uploadStatusEl.textContent = '';
+});
 
 async function init() {
   initSpeechRecognition();
   if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = () => {};
   const online = await API.checkHealth();
   setStatusBar(online);
-  await hydrateServices();
   await Promise.all([
     SESSION.initUser(),
     loadServicesFromBackend(),
 ]);
-  setLanguage('en');
-  appendMessage('assistant', UI.en.greeting);
-  SESSION.updateSessionDisplay();
+  setLanguage('rw');
+  appendMessage('assistant', UI.rw.greeting);
 }
 
 init();
