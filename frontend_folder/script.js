@@ -1,6 +1,6 @@
 'use strict';
 const CONFIG = {
-  BACKEND_URL: 'http://localhost:8000',
+  BACKEND_URL: '',
   GUEST_USER_ID: 1,
   USE_BACKEND_CHAT: false,
 };
@@ -489,7 +489,7 @@ async function loadServicesFromBackend() {
         }
       }
 
-    const created = await API.createUser({ language: currentLang, guest: true });
+    const created = await API.createUser(null, currentLang);
       if (created?.id) {
         this.saveUserId(created.id);
         return created.id;
@@ -715,12 +715,12 @@ function setStatusBar(online) {
 }
 
 /* Sidebar */
-function setLanguage(lang) {
+function showServiceCard(svc) {
   const ui = UI[currentLang];
   const L  = currentLang;
 
-      serviceCardEl.dataset.serviceId = svc.id;
-  serviceCardEl.hidden  = false;
+  serviceCard.dataset.serviceId = svc.id;
+  serviceCard.hidden    = false;
   quickPanel.hidden     = true;
   uploadPanel.hidden    = true;
 
@@ -866,8 +866,8 @@ voiceToggle.addEventListener('click', () => {
   voiceToggleLabel.textContent = speakEnabled ? UI[currentLang].voiceOn : UI[currentLang].voiceOff;
   if (!speakEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel();
 });
-applyBtn.addEventListener('click', startApplication);
-uploadSubmitBtn.addEventListener('click', submitUploads);
+applyBtn.addEventListener('click', () => API.startApplication());
+uploadSubmitBtn.addEventListener('click', () => { uploadStatusEl.textContent = 'Upload not yet implemented in this demo.'; });
 uploadCancelBtn.addEventListener('click', () => {
   uploadPanel.hidden = true;
   uploadStatusEl.textContent = '';
