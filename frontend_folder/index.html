@@ -21,7 +21,7 @@
         <nav class="lang-nav" aria-label="Choose language">
             <button class="lang-btn active" data-lang="rw" aria-pressed="true">Kinyarwanda</button>
             <button class="lang-btn" data-lang="en" aria-pressed="false">English</button>
-            <button class="lang-btn" data-lang="fr" aria-pressed="false">Français</button>
+            <button class="lang-btn" data-lang="fr" aria-pressed="false">French</button>
         </nav>
 
         </div>
@@ -107,11 +107,34 @@
             <div class="service-source">
                 <span id="sc-source-text">Source: Irembo verified data</span>
             </div>
+            <button class="apply-btn" id="apply-btn" type="button" hidden>
+                Apply for this service
+            </button>
             </div>
 
             <div class="quick-panel" id="quick-panel">
             <h3 class="panel-heading" id="quick-heading">Available Services</h3>
             <div class="quick-list" id="quick-list" role="list"></div>
+            </div>
+
+            <div class="upload-panel" id="upload-panel" hidden>
+            <div class="upload-panel-header">
+                <h3 class="panel-heading" id="upload-heading">Upload your Documents</h3>
+                <span class="upload-ref" id="upload-ref"></span>
+            </div>
+            <p class="upload-intro" id="upload-intro">
+                Please upload the required documents for this application.
+            </p>
+            <div class="upload-fields" id="upload-fields"></div>
+            <div class="upload-actions">
+                <button class="upload-submit-btn" id="upload-submit-btn" type="button">
+                Submit
+                </button>
+                <button class="upload-cancel-btn" id="upload-cancel-btn" type="button">
+                Cancel
+                </button>
+            </div>
+            <p class="upload-status" id="upload-status" role="status" aria-live="polite"></p>
             </div>
 
             <div class="voice-panel">
@@ -134,7 +157,6 @@
             <p class="panel-note" id="info-note">
                 GovAgent guides you through Irembo government services in Kinyarwanda, English, or French.
                 All service information is sourced from verified Irembo documentation.
-                Answers are generated locally — no data leaves your device in this demo.
             </p>
             </div>
         </aside>
