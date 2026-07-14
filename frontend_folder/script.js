@@ -1,8 +1,8 @@
 'use strict';
 const CONFIG = {
-  BACKEND_URL: 'http://127.0.0.1:5500',
+  BACKEND_URL: 'http://127.0.0.1:8000',
   GUEST_USER_ID: 1,
-  USE_BACKEND_CHAT: false,
+  USE_BACKEND_CHAT: true,
 };
 /*Knowlegde Base [KB] */
 const KB = {
@@ -244,7 +244,7 @@ function retrieveServices(query, lang) {
   return scored.sort((a, b) => b.score - a.score).slice(0, 2).map(s => s.svc);
 }
 
-/* Local Response */
+/* Local Response generation */
 const TEMPLATES = {
   intro:      { rw: n => `Ngufasha gusaba **${n}** kuri Irembo. Dore amakuru akenewe:`,     en: n => `I can help you with **${n}** on Irembo. Here is what you need:`,              fr: n => `Je peux vous aider pour **${n}** sur Irembo. Voici ce qu'il vous faut :` },
   reqHeader:  { rw: () => 'Ibisabwa:',                                                       en: () => 'Requirements:',                                                              fr: () => 'Pièces requises :' },
@@ -264,7 +264,7 @@ function buildLocalResponse(matches, lang) {
   }
   const svc = matches[0];
   const opt = TEMPLATES.optional[lang];
-  const lines = [
+  return [
     TEMPLATES.intro[lang](svc.name[lang]), '',
     TEMPLATES.reqHeader[lang](),
     ...svc.requirements.map(r => `  - ${r[lang] || r.en}${r.mandatory ? '' : opt}`),
@@ -272,196 +272,7 @@ function buildLocalResponse(matches, lang) {
     ...svc.steps.map((s, i) => `  ${i + 1}. ${s[lang] || s.en}`),
     '', TEMPLATES.fee[lang](svc.fee_rwf),
     '', TEMPLATES.closing[lang](),
-  ];
-  return lines.join('\n');
-}
-
-/* API */
-const API = {
-  async _fetch(method, path, body = null) {
-    const url = `${CONFIG.BACKEND_URL}${path}`;
-    const opts = {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-    };
-    if (body !== null) opts.body = JSON.stringify(body);
-    const res = await fetch(url, opts);
-    if (!res.ok) {
-      console.warn(`[API] ${method} ${path} → ${res.status}`);
-      return null;
-    }
-    return await res.json();
-  },
-
-  async _fetchMultipart(path, formData) {
-    const url = `${CONFIG.BACKEND_URL}${path}`;
-    const res = await fetch(url, { method: 'POST', body: formData });
-    if (!res.ok) {
-      console.warn(`[API] POST ${path} → ${res.status}`);
-      return null;
-    }
-    return res.json();
-  },
-
-  async checkHealth() {
-    try {
-      const data = await this._fetch('GET', '/health');
-      return data?.status === 'ok';
-    } catch {
-      return false;
-    }
-  },
-
-/* Users */
-  async createUser(phoneNumber = null, preferredLanguage = 'rw') {  
-  try {
-    return await this._fetch('POST', '/users', {
-        phone_number:       phoneNumber,
-        preferred_language: preferredLanguage,
-      });
-    } catch (err) {
-      console.error('[API] createUser failed:', err);
-      return null;
-    }
-  },
-  async lookupUser(phonenumber) {
-    try {
-      return await this._fetch('POST', '/users/lookup', {phonenumber: phoneNumber});
-    } catch (err) {
-      console.error('[API] lookupUser failed:', err);
-      return null;
-    }
-  },
-
-/* Services */
-  async listServices() {
-    try {
-      return await this._fetch('GET', '/services');
-    } catch (err) {
-      console.error('[API] listServices failed:', err);
-      return null;
-    }
-  },
-  async getService(serviceId) {
-    try {
-      return await this._fetch('GET', `/services/${serviceId}`);
-    } catch (err) {
-      console.error('[API] getService failed:', err);
-      return null;
-    }
-  },
-
-/* Chat */
-  async startConversation(userId) {
-    try {
-      return await this._fetch('POST', '/chat/start', { user_id: userId });
-    } catch (err) {
-      console.error('[API] startCoversation failed:', err);
-      return null;
-    }
-  },
-  saveMessage(conversationId, role, content, language = currentLang) {
-    try {
-      return await this._fetch('POST',`/chat/${conversationId}/messages`,{ role, content, language });
-    } catch (err) {
-      console.error('[API] saveMessage failed:', err);
-      return null;
-    }
-  },
-
-/* Application */
-  async startApplication(userId, serviceId, conversationId = null) {
-    try {
-      return await this._fetch('POST', '/applications/start', {
-        user_id: userId,
-        service_id: serviceId,
-        conversation_id: conversationId,
-      });
-    } catch (err) {
-      console.error('[API] startApplicationFlow failed:', err);
-      return null;
-    }
-  },
-  async createApplication(userId, serviceId, conversationId) { 
-    try {
-      return await this._fetch('POST', '/applications', {
-        user_id: userId,
-        service_id: serviceId,
-        conversation_id: conversationId ?? null,
-      });
-    } catch (err) {
-      console.error('[API] createApplication failed:', err);
-      return null;
-    }
-  },
-
-  async getApplication(applicationId) {
-    try {
-      return await this._fetch('GET', `/applications/${applicationId}`);
-    } catch (err) {
-      console.error('[API] getApplication failed:', err);
-      return null;
-    }
-  },
-  async getApplicationDetail(applicationId) {
-    try {
-      return await this._fetch('GET', `/applications/${applicationId}/detail`);
-    } catch (err) {
-      console.error('[API] getApplication failed:', err);
-      return null;
-    }
-  },  
-
-  async saveApplicationData(applicationId, requirementId, value) {
-    try {
-      return await this._fetch('PUT',`/applications/${applicationId}/data/${requirementId}`,
-      { requirement_id: requirementId, value });
-    } catch (err) {
-      console.error('[API] saveApplicationData failed:', err);
-      return null;
-    }
-  },
-
-  /* Payment */
-  async createPayment(applicationId, amount, gatewayReference = null) {
-    try {
-      return await this._fetch('POST', `/payments/${applicationId}`, {payment_method: 'mobile_money',amount,gateway_reference: gatewayReference,});
-    } catch (err) {
-      console.error('[API] createPayment failed:', err);
-      return null;
-    }
-  },
-
-  /* Document upload */
-  async uploadDocument(applicationId, file, requirementId = null) {
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      if (requirementId !== null) fd.append('requirement_id', String(requirementId));
-      return await this._fetchMultipart(`/uploads/${applicationId}`, fd);
-    } catch (err) {
-      console.error('[API] uploadDocument failed:', err);
-      return null;
-    }
-  },
-};
-
-/* Load Service */
-async function loadServicesFromBackend() {
-  const services = await API.listServices();
-  if (!Array.isArray(services)) return;
-  services.forEach(backendSvc => {
-    const localEntry = Object.values(KB).find(
-      k => k.backendName.toLowerCase() === backendSvc.name.toLowerCase()
-    );
-    if (localEntry) {
-      localEntry.backendId = backendSvc.id;
-      if (backendSvc.fee != null) {
-        localEntry.fee_rwf = Number(backendSvc.fee);
-      }
-    }
-  });
-  console.log('[KB] backendId values synced from GET /services');
+  ].join('\n');
 }
 
 /* Session */
@@ -489,26 +300,147 @@ async function loadServicesFromBackend() {
         }
       }
 
-    const created = await API.createUser({ language: currentLang, guest: true });
+    const created = await API.createUser(phone, currentLang);
       if (created?.id) {
         this.saveUserId(created.id);
         return created.id;
       }
     } catch (err) {
-        console.warn('[SESSION] initUser failed, falling back to GUEST_USER_ID:', err);
+        console.warn('[SESSION] initUser failed, using fallback:', err);
     }
     this.saveUserId(CONFIG.GUEST_USER_ID);
     return CONFIG.GUEST_USER_ID;
   },
-  updateSessionDisplay() {
-    const userEl = document.getElementById('session-user-id');
-    const convEl = document.getElementById('session-conv-id');
-    if (userEl) userEl.textContent = `${UI[currentLang].sessionLabel} #${this.getUserId() ?? '—'}`;
-    if (convEl) convEl.textContent = this.conversationId
-      ? `${UI[currentLang].convLabel} #${this.conversationId}`
-      : '';
+};
+
+/* API */
+const API = {
+  async _fetch(method, path, body = null) {
+    const url = `${CONFIG.BACKEND_URL}${path}`;
+    const opts = {method,headers: { 'Content-Type': 'application/json' },};
+    if (body !== null) opts.body = JSON.stringify(body);
+    try {  
+      const res = await fetch(url, opts);
+      if (!res.ok) {console.warn(`[API] ${method} ${path} → ${res.status}`); return null; }
+      return res.json();
+    } catch { return null; }
+  },
+
+  async _fetchMultipart(path, formData) {
+    try {
+      const res = await fetch(`${CONFIG.BACKEND_URL}${path}`, { method: 'POST', body: formData });
+      if (!res.ok) { console.warn(`[API] POST ${path} → ${res.status}`); return null;}
+      return res.json();
+    } catch { return null; }
+  },
+
+  async checkHealth() {
+    try {
+      const data = await this._fetch('GET', '/health');
+      return data?.status === 'ok';
+    } catch { return false; }
+  },
+
+  async createUser(phoneNumber = null, preferredLanguage = 'rw') {  
+    return this._fetch('POST', '/users', {phone_number:phoneNumber,preferred_language: preferredLanguage,});
+  },
+
+  async lookupUser(phonenumber) {
+    return this._fetch('POST', '/users/lookup', {phonenumber: phoneNumber});
+  },
+
+  async listServices() {
+    return this._fetch('GET', '/services');
+  },
+
+  async getService(serviceId) {
+    return this._fetch('GET', `/services/${serviceId}`);
+  },
+
+  async chatWithAI(message, userId, conversationId, preferredLanguage = 'en') {
+    return this._fetch('POST', '/chat', {
+      message,
+      user_id:            userId,
+      conversation_id:    conversationId ?? null,
+      preferred_language: preferredLanguage,
+    });
+  },
+
+  async startConversation(userId) {
+    return this._fetch('POST', '/chat/start', { user_id: userId });
+  },
+
+  async saveMessage(conversationId, role, content) {
+    return this._fetch('POST',`/chat/${conversationId}/messages`,{ role, content });
+  },
+
+/* Application */
+  async startApplicationFlow(userId, serviceId, conversationId = null) {
+    return this._fetch('POST', '/applications/start', {
+      user_id: userId,
+      service_id: serviceId,
+      conversation_id: conversationId,
+    });
+  },
+
+  async getApplicationDetail(applicationId) {
+      return await this._fetch('GET', `/applications/${applicationId}/detail`);
+  },  
+
+  async createPayment(applicationId, amount, gatewayReference = null) {
+    return this._fetch('POST', `/payments/${applicationId}`, {payment_method: 'mobile_money',amount});
+  },
+
+  async uploadDocument(applicationId, file, requirementId = null) {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (requirementId !== null) fd.append('requirement_id', String(requirementId));
+    return this._fetchMultipart(`/uploads/${applicationId}`, fd);
   },
 };
+
+/* The upload panel */
+let activeApplicationId = null;
+let activeServiceBackendId = null;
+
+
+
+  // async createApplication(userId, serviceId, conversationId) { 
+  //   try {
+  //     return await this._fetch('POST', '/applications', {
+  //       user_id: userId,
+  //       service_id: serviceId,
+  //       conversation_id: conversationId ?? null,
+  //     });
+  //   } catch (err) {
+  //     console.error('[API] createApplication failed:', err);
+  //     return null;
+  //   }
+  // },
+
+  // async getApplication(applicationId) {
+  //   return this._fetch('GET', `/applications/${applicationId}`);
+  // },
+
+/* Load Service */
+async function loadServicesFromBackend() {
+  const services = await API.listServices();
+  if (!Array.isArray(services)) return;
+  services.forEach(backendSvc => {
+    const localEntry = Object.values(KB).find(
+      k => k.backendName.toLowerCase() === backendSvc.name.toLowerCase()
+    );
+    if (localEntry) {
+      localEntry.backendId = backendSvc.id;
+      if (backendSvc.fee != null) {
+        localEntry.fee_rwf = Number(backendSvc.fee);
+      }
+    }
+  });
+  console.log('[KB] backendId values synced from GET /services');
+}
+
+
 
 /* Chat Pipeline */
 let currentLang   = 'rw';
