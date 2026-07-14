@@ -24,9 +24,11 @@ def get_service(service_id: int, db: Session = Depends(get_db)):
     return ServiceDetailRead(
         id=service.id,
         name=service.name,
+        name_rw=service.name_rw,
+        category=service.category,
         description=service.description,
         fee=float(service.fee),
-        is_active=service.is_active,
+        processing_days=service.processing_days,
         requirements=overview["requirements"],
         steps=overview["steps"],
     )

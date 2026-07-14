@@ -1,6 +1,6 @@
 'use strict';
 const CONFIG = {
-  BACKEND_URL: 'http://127.0.0.1:5500',
+  BACKEND_URL: 'http://localhost:8000',
   GUEST_USER_ID: 1,
   USE_BACKEND_CHAT: false,
 };
@@ -360,7 +360,7 @@ const API = {
       return null;
     }
   },
-  saveMessage(conversationId, role, content, language = currentLang) {
+  async saveMessage(conversationId, role, content, language = currentLang) {
     try {
       return await this._fetch('POST',`/chat/${conversationId}/messages`,{ role, content, language });
     } catch (err) {

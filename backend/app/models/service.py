@@ -17,6 +17,7 @@ class Service(Base):
     # Relationships
     requirements = relationship("Requirement", back_populates="service")
     steps = relationship("Step", back_populates="service")
+    applications = relationship("Application", back_populates="service")
 
     @validates("name")
     def validate_name(self, key, name):

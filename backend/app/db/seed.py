@@ -4,7 +4,7 @@
 # Replace with Alvin's verified Irembo data
 # ============================================
 import logging
-from app.db.database import SessionLocal, create_tables
+from app.db.database import SessionLocal, init_db
 from app.models.user import User
 from app.models.service import Service
 from app.models.requirement import Requirement
@@ -312,7 +312,7 @@ def run_seed():
     Run this before every demo or test session.
     """
     logger.info("Starting database seed...")
-    create_tables()
+    init_db()
 
     db = SessionLocal()
 

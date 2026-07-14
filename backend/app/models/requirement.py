@@ -18,6 +18,8 @@ class Requirement(Base):
 
     # Relationships
     service = relationship("Service", back_populates="requirements")
+    application_data = relationship("ApplicationData", back_populates="requirement")
+    uploads = relationship("UploadedDocument", back_populates="requirement")
 
     @validates("name")
     def validate_name(self, key, name):

@@ -3,7 +3,9 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.models.application import Application, ApplicationData, Conversation, Message
-from app.models.service import Requirement, Service, Step
+from app.models.service import Service
+from app.models.requirement import Requirement
+from app.models.steps import Step
 from app.models.user import User
 from app.services.grounding import GroundingContext, build_grounded_prompt
 from app.services.intent import detect_intent
@@ -28,7 +30,7 @@ def create_conversation(db: Session, user_id: int) -> Conversation:
     if user is None:
         raise ValueError("User not found")
 
-    conversation = Conversation(user_id=user_id, status="open", started_at=datetime.utcnow())
+    conversation = Conversation(user_id=user_id, status="active", started_at=datetime.utcnow())
     db.add(conversation)
     db.commit()
     db.refresh(conversation)
@@ -51,10 +53,10 @@ def get_service_overview(db: Session, service_id: int) -> dict:
     requirements = (
         db.query(Requirement)
         .filter(Requirement.service_id == service_id)
-        .order_by(Requirement.order_index.asc())
+        .order_by(Requirement.id.asc())
         .all()
     )
-    steps = db.query(Step).filter(Step.service_id == service_id).order_by(Step.order_index.asc()).all()
+    steps = db.query(Step).filter(Step.service_id == service_id).order_by(Step.step_no.asc()).all()
 
     return {
         "service": service,

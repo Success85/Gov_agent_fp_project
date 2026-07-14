@@ -37,26 +37,28 @@ class ServiceCreate(BaseModel):
 class ServiceRead(ORMModel):
     id: int
     name: str
+    name_rw: str
+    category: str
     description: str | None
     fee: float
-    is_active: bool
+    processing_days: int | None
 
 
 class RequirementRead(ORMModel):
     id: int
     service_id: int
     name: str
-    description: str | None
-    mandatory: bool
+    name_rw: str
+    is_mandatory: bool
     needs_upload: bool
-    order_index: int
 
 
 class StepRead(ORMModel):
     id: int
     service_id: int
-    order_index: int
-    description: str
+    step_no: int
+    instruction: str
+    instruction_rw: str
 
 
 class ServiceDetailRead(ServiceRead):

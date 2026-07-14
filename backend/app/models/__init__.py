@@ -7,7 +7,9 @@ from app.models.application import (
     PaymentTransaction,
     UploadedDocument,
 )
-from app.models.service import Requirement, Service, Step
+from app.models.service import Service
+from app.models.requirement import Requirement
+from app.models.steps import Step
 from app.models.user import User
 
 __all__ = [

@@ -15,6 +15,7 @@ class Conversation(Base):
 
     # Relationships
     user = relationship("User", back_populates="conversations")
+    application = relationship("Application", back_populates="conversation", uselist=False)
     messages = relationship(
         "Message",
         back_populates="conversation",
