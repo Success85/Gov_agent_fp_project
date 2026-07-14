@@ -321,8 +321,8 @@ def seed_applications(db, users, services):
         Application(
             user_id=users[1].id,
             service_id=birth_cert.id,
-            status="in_progress",
-            reference_number=None
+            status="draft",
+            reference_number="GOV-2026-00002"
         ),
     ]
 
@@ -369,6 +369,10 @@ def seed_application_data(db, applications, requirements):
     ]
     for data in application_data:
         db.add(data)
+    db.commit()
+    logger.info(f"Seeded {len(application_data)} application data entries")
+    return application_data
+
 
 def run_seed():
    
