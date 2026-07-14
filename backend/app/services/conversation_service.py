@@ -10,9 +10,7 @@ def create_conversation(
     user_id: int,
     db: Session
 ) -> Conversation:
-    """
-    Start a new conversation for a citizen.
-    """
+    
     try:
         conversation = Conversation(
             user_id=user_id,
@@ -37,10 +35,7 @@ def get_conversation_by_id(
     conversation_id: int,
     db: Session
 ) -> Conversation | None:
-    """
-    Fetch a single conversation by its ID.
-    Returns None if not found.
-    """
+   
     try:
         conversation = db.query(Conversation).filter(
             Conversation.id == conversation_id
@@ -83,15 +78,19 @@ def get_conversations_by_user(
         raise
 
 
+VALID_CONVERSATION_TRANSITIONS = {
+    "active": ["completed", "abandoned"],
+    "completed": [],
+    "abandoned": []
+}
+
+
 def update_conversation_status(
     conversation_id: int,
     status: str,
     db: Session
 ) -> Conversation | None:
-    """
-    Update the status of a conversation.
-    Valid statuses: active, completed, abandoned.
-    """
+    
     try:
         conversation = get_conversation_by_id(
             conversation_id=conversation_id,
@@ -105,6 +104,20 @@ def update_conversation_status(
             )
             return None
 
+        current_status = conversation.status
+        allowed_next = VALID_CONVERSATION_TRANSITIONS.get(
+            current_status, []
+        )
+
+        if status not in allowed_next:
+            raise ValueError(
+                f"Invalid status transition for "
+                f"conversation id={conversation_id}. "
+                f"Cannot move from '{current_status}' to '{status}'. "
+                f"Allowed transitions from '{current_status}': "
+                f"{allowed_next if allowed_next else 'none — terminal state'}"
+            )
+
         conversation.status = status
 
         if status in ["completed", "abandoned"]:
@@ -115,34 +128,14 @@ def update_conversation_status(
         db.refresh(conversation)
         logger.info(
             f"Conversation id={conversation_id} "
-            f"status updated to {status}"
+            f"transitioned from {current_status} to {status}"
         )
         return conversation
+
+    except ValueError:
+        raise
 
     except Exception as e:
         db.rollback()
         logger.error(f"Error updating conversation status: {e}")
-        raise
-
-
-def get_active_conversation(
-    user_id: int,
-    db: Session
-) -> Conversation | None:
-    """
-    Fetch the current active conversation for a citizen.
-    Returns None if no active conversation exists.
-    """
-    try:
-        conversation = db.query(Conversation).filter(
-            Conversation.user_id == user_id,
-            Conversation.status == "active"
-        ).order_by(
-            Conversation.started_at.desc()
-        ).first()
-
-        return conversation
-
-    except Exception as e:
-        logger.error(f"Error fetching active conversation: {e}")
         raise

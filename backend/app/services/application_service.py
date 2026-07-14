@@ -11,10 +11,7 @@ def create_application(
     service_id: int,
     db: Session
 ) -> Application:
-    """
-    Start a new application for a citizen.
-    Status defaults to in_progress.
-    """
+    
     try:
         application = Application(
             user_id=user_id,
@@ -40,10 +37,7 @@ def get_application_by_id(
     application_id: int,
     db: Session
 ) -> Application | None:
-    """
-    Fetch a single application by its ID.
-    Returns None if not found.
-    """
+   
     try:
         application = db.query(Application).filter(
             Application.id == application_id
@@ -64,10 +58,8 @@ def get_applications_by_user(
     user_id: int,
     db: Session
 ) -> list[Application]:
-    """
-    Fetch all applications for a specific citizen.
-    Returns most recent first.
-    """
+   
+   
     try:
         applications = db.query(Application).filter(
             Application.user_id == user_id
@@ -91,11 +83,7 @@ def get_active_application(
     service_id: int,
     db: Session
 ) -> Application | None:
-    """
-    Fetch an in_progress application for a citizen
-    and service combination.
-    Returns None if no active application exists.
-    """
+   
     try:
         application = db.query(Application).filter(
             Application.user_id == user_id,
@@ -116,12 +104,7 @@ def upsert_application_data(
     field_value: str,
     db: Session
 ) -> ApplicationData:
-    """
-    Save or update a single field answer for an application.
-    If the field already exists update it.
-    If it does not exist create it.
-    This handles citizens correcting earlier answers.
-    """
+  
     try:
         existing = db.query(ApplicationData).filter(
             ApplicationData.application_id == application_id,
@@ -162,10 +145,7 @@ def get_application_data(
     application_id: int,
     db: Session
 ) -> list[ApplicationData]:
-    """
-    Fetch all answered fields for an application.
-    Used by the flow manager to check what is still missing.
-    """
+    
     try:
         data = db.query(ApplicationData).filter(
             ApplicationData.application_id == application_id
@@ -186,11 +166,7 @@ def get_answered_field_names(
     application_id: int,
     db: Session
 ) -> list[str]:
-    """
-    Return just the field names that have been answered.
-    Used by the flow manager to quickly check
-    what is still missing without loading all values.
-    """
+   
     try:
         data = get_application_data(
             application_id=application_id,
@@ -203,16 +179,21 @@ def get_answered_field_names(
         raise
 
 
+VALID_TRANSITIONS = {
+    "in_progress": ["submitted", "cancelled"],
+    "submitted": ["completed", "cancelled"],
+    "completed": [],
+    "cancelled": []
+}
+
+
 def update_application_status(
     application_id: int,
     status: str,
     db: Session,
     reference_number: str = None
 ) -> Application | None:
-    """
-    Update the status of an application.
-    Optionally set a reference number when submitting.
-    """
+   
     try:
         application = get_application_by_id(
             application_id=application_id,
@@ -226,6 +207,18 @@ def update_application_status(
             )
             return None
 
+        current_status = application.status
+        allowed_next = VALID_TRANSITIONS.get(current_status, [])
+
+        if status not in allowed_next:
+            raise ValueError(
+                f"Invalid status transition for "
+                f"application id={application_id}. "
+                f"Cannot move from '{current_status}' to '{status}'. "
+                f"Allowed transitions from '{current_status}': "
+                f"{allowed_next if allowed_next else 'none — terminal state'}"
+            )
+
         application.status = status
 
         if status == "submitted" and not application.reference_number:
@@ -238,10 +231,13 @@ def update_application_status(
         db.refresh(application)
         logger.info(
             f"Application id={application_id} "
-            f"status updated to {status} "
-            f"reference={application.reference_number}"
+            f"transitioned from {current_status} to {status}. "
+            f"Reference: {application.reference_number}"
         )
         return application
+
+    except ValueError:
+        raise
 
     except Exception as e:
         db.rollback()
@@ -253,11 +249,7 @@ def get_application_summary(
     application_id: int,
     db: Session
 ) -> dict:
-    """
-    Return a complete summary of an application
-    including all answered fields.
-    Used by the frontend result screen.
-    """
+   
     try:
         application = get_application_by_id(
             application_id=application_id,
