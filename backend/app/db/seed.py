@@ -305,7 +305,7 @@ def seed_messages(db, conversations):
     logger.info(f"Seeded {len(messages)} messages")
     return messages
 
-    
+
 def seed_applications(db, users, services):
     
     national_id = services[0]
@@ -385,11 +385,7 @@ def seed_application_data(db, applications):
     return application_data
 
 def run_seed():
-    """
-    Main seed function.
-    Clears all tables and repopulates with fresh data.
-    Run this before every demo or test session.
-    """
+   
     logger.info("Starting database seed...")
     create_tables()
 
@@ -404,6 +400,8 @@ def run_seed():
         steps = seed_steps(db, services)
         conversations = seed_conversations(db, users)
         messages = seed_messages(db, conversations)
+        applications = seed_applications(db, users, services)
+        application_data = seed_application_data(db, applications)
 
         logger.info("Database seeded successfully")
         logger.info(f"Users: {len(users)}")
@@ -412,6 +410,8 @@ def run_seed():
         logger.info(f"Steps: {len(steps)}")
         logger.info(f"Conversations: {len(conversations)}")
         logger.info(f"Messages: {len(messages)}")
+        logger.info(f"Applications: {len(applications)}")
+        logger.info(f"Application Data: {len(application_data)}")
 
     except Exception as e:
         logger.error(f"Seed failed: {e}")
