@@ -387,15 +387,15 @@ const API = {
       return await this._fetch('GET', `/applications/${applicationId}/detail`);
   },  
 
-  async createPayment(applicationId, amount, gatewayReference = null) {
-    return this._fetch('POST', `/payments/${applicationId}`, {payment_method: 'mobile_money',amount});
-  },
-
   async uploadDocument(applicationId, file, requirementId = null) {
     const fd = new FormData();
     fd.append('file', file);
     if (requirementId !== null) fd.append('requirement_id', String(requirementId));
     return this._fetchMultipart(`/uploads/${applicationId}`, fd);
+  },
+
+  async createPayment(applicationId, amount) {
+    return this._fetch('POST', `/payments/${applicationId}`, {payment_method: 'mobile_money',amount});
   },
 };
 
@@ -403,44 +403,125 @@ const API = {
 let activeApplicationId = null;
 let activeServiceBackendId = null;
 
+function buildUploadFields(requirements) {
+  const ui = UI[currentLang];
+  uploadFieldsEl.innerHTML = '';
+  requirements.forEach((req, i) => {
+    const field = document.createElement('div');
+    field.className = 'upload-field';
 
-
-  // async createApplication(userId, serviceId, conversationId) { 
-  //   try {
-  //     return await this._fetch('POST', '/applications', {
-  //       user_id: userId,
-  //       service_id: serviceId,
-  //       conversation_id: conversationId ?? null,
-  //     });
-  //   } catch (err) {
-  //     console.error('[API] createApplication failed:', err);
-  //     return null;
-  //   }
-  // },
-
-  // async getApplication(applicationId) {
-  //   return this._fetch('GET', `/applications/${applicationId}`);
-  // },
-
-/* Load Service */
-async function loadServicesFromBackend() {
-  const services = await API.listServices();
-  if (!Array.isArray(services)) return;
-  services.forEach(backendSvc => {
-    const localEntry = Object.values(KB).find(
-      k => k.backendName.toLowerCase() === backendSvc.name.toLowerCase()
-    );
-    if (localEntry) {
-      localEntry.backendId = backendSvc.id;
-      if (backendSvc.fee != null) {
-        localEntry.fee_rwf = Number(backendSvc.fee);
-      }
+    const label = document.createElement('label');
+    label.className   = 'upload-field-label';
+    label.htmlFor     = `upload-file-${i}`;
+    label.textContent = req.name || req.description || `Document ${i + 1}`;
+    if (!req.mandatory) {
+      const opt    = document.createElement('span');
+      opt.className    = 'req-optional';
+      opt.textContent  = ` ${ui.uploadOptional}`;
+      label.appendChild(opt);
     }
+
+    const input = document.createElement('input');
+    input.type      = 'file';
+    input.id        = `upload-file-${i}`;
+    input.className = 'upload-field-input';
+    input.accept    = '.pdf,.jpg,.jpeg,.png';
+    input.dataset.requirementId = req.id ?? '';
+    input.dataset.mandatory     = req.mandatory ? '1' : '0';
+    input.addEventListener('change', () => {
+      input.classList.toggle('has-file', input.files.length > 0);
+    });
+
+    field.appendChild(label);
+    field.appendChild(input);
+    uploadFieldsEl.appendChild(field);
   });
-  console.log('[KB] backendId values synced from GET /services');
 }
 
+async function startApplication() {
+  if (!backendOnline) {
+    appendMessage('assistant', UI[currentLang].noMatch);
+    return;
+  }
 
+  const ui      = UI[currentLang];
+  const userId  = SESSION.getUserId() ?? CONFIG.GUEST_USER_ID;
+  applyBtn.disabled = true;
+  applyBtn.textContent = '…';
+
+  try {
+    const app = await API.startApplicationFlow(
+      userId,
+      activeServiceBackendId,
+      SESSION.conversationId
+    );
+    if (!app?.id) throw new Error('No application returned');
+    activeApplicationId = app.id;
+    const svcDetail = await API.getService(activeServiceBackendId);
+    const uploadReqs = (svcDetail?.requirements ?? []).filter(r => r.needs_upload);
+
+    if (uploadReqs.length === 0) {
+      appendMessage('assistant', ui.appStarted + app.reference_number);
+      uploadPanel.hidden = true;
+    } else {
+      uploadHeadingEl.textContent  = ui.uploadHeading;
+      uploadIntroEl.textContent    = ui.uploadIntro;
+      uploadSubmitBtn.textContent  = ui.uploadSubmit;
+      uploadCancelBtn.textContent  = ui.uploadCancel;
+      uploadRefEl.textContent      = app.reference_number;
+      uploadStatusEl.textContent   = '';
+      uploadStatusEl.className     = 'upload-status';
+      buildUploadFields(uploadReqs);
+      uploadPanel.hidden = false;
+      uploadPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      appendMessage('assistant', ui.appStarted + app.reference_number);
+    }
+  } catch (err) {
+    console.error('[startApplication]', err);
+    appendMessage('assistant', UI[currentLang].uploadError);
+  } finally {
+    applyBtn.disabled    = false;
+    applyBtn.textContent = UI[currentLang].applyBtn;
+  }
+}
+
+async function submitUploads() {
+  if (!activeApplicationId) return;
+  const ui = UI[currentLang];
+
+  uploadSubmitBtn.disabled   = true;
+  uploadStatusEl.textContent = ui.uploadProgress;
+  uploadStatusEl.className   = 'upload-status loading';
+
+  const inputs   = uploadFieldsEl.querySelectorAll('input[type=file]');
+  const errors   = [];
+  let   uploaded = 0;
+
+  for (const input of inputs) {
+    const mandatory = input.dataset.mandatory === '1';
+    if (!input.files.length) {
+      if (mandatory) { errors.push(input.previousElementSibling?.textContent ?? 'Required file missing'); }
+      continue;
+    }
+    const file  = input.files[0];
+    const reqId = input.dataset.requirementId ? Number(input.dataset.requirementId) : null;
+    const result = await API.uploadDocument(activeApplicationId, file, reqId);
+    if (!result) errors.push(file.name);
+    else uploaded++;
+  }
+
+  if (errors.length) {
+    uploadStatusEl.textContent = ui.uploadError + ' (' + errors.join(', ') + ')';
+    uploadStatusEl.className   = 'upload-status error';
+  } else {
+    uploadStatusEl.textContent = ui.uploadSuccess + activeApplicationId;
+    uploadStatusEl.className   = 'upload-status success';
+    uploadSubmitBtn.disabled   = true;
+    appendMessage('assistant', ui.uploadSuccess + activeApplicationId);
+  }
+
+  uploadSubmitBtn.disabled = false;
+}
 
 /* Chat Pipeline */
 let currentLang   = 'rw';
@@ -465,13 +546,7 @@ async function sendMessage() {
   if (CONFIG.USE_BACKEND_CHAT && backendOnline) {
     try {
       const userId = SESSION.getUserId() ?? CONFIG.GUEST_USER_ID;
-      const reply = await API.chatWithAI(
-          raw,
-          userId,
-          SESSION.conversationId,
-          currentLang
-        );
-
+      const reply = await API.chatWithAI(raw, userId, SESSION.conversationId, currentLang);
         if (reply?.assistant_message) {
           replyText = reply.assistant_message;
           grounded  = true; 
@@ -647,11 +722,11 @@ function setStatusBar(online) {
 }
 
 /* Sidebar */
-function setLanguage(lang) {
+function showServiceCard(svc) {
   const ui = UI[currentLang];
   const L  = currentLang;
 
-      serviceCardEl.dataset.serviceId = svc.id;
+  serviceCardEl.dataset.serviceId = svc.id;
   serviceCardEl.hidden  = false;
   quickPanel.hidden     = true;
   uploadPanel.hidden    = true;
@@ -730,10 +805,9 @@ function setLanguage(lang) {
   if (applyBtn) applyBtn.textContent = ui.applyBtn;
 
   buildQuickList();
-  SESSION.updateSessionDisplay();
 
-  if (!serviceCard.hidden) {
-    const id = serviceCard.dataset.serviceId;
+  if (!serviceCardEl.hidden) {
+    const id = serviceCardEl.dataset.serviceId;
     if (id && KB[id]) showServiceCard(KB[id]);
   }
 
