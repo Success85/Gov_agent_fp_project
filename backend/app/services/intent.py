@@ -1,64 +1,110 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 
 @dataclass
 class IntentResult:
-	intent: str
-	service_name: str | None
-	confidence: float
+    intent: str
+    service_name: str | None
+    confidence: float
 
 
-KEYWORD_TO_SERVICE = {
-	"birth": "Birth Certificate",
-	"certificate": "Birth Certificate",
-	"national id": "National ID",
-	"id": "National ID",
-	"indangamuntu": "National ID",
-	"icyemezo cy'amavuko": "Birth Certificate",
-	"amavuko": "Birth Certificate",
-	"iryangamuntu": "National ID",
-	"karamu": "National ID",
-	"identity": "National ID",
-	"certificat": "Birth Certificate",
-	"indentity": "National ID",
-	"citizenship": "National ID",
+# Keys map to the exact Service.name values stored in the database.
+KEYWORD_TO_SERVICE: dict[str, str] = {
+    # Application for National ID
+    "national id": "Application for National ID",
+    "national identity": "Application for National ID",
+    "identity card": "Application for National ID",
+    "citizen application number": "Application for National ID",
+    "indangamuntu": "Application for National ID",
+    "iryangamuntu": "Application for National ID",
+    "carte d'identite": "Application for National ID",
+    "carte didentite": "Application for National ID",
+    "identite nationale": "Application for National ID",
+
+    # Birth Certificate
+    "birth certificate": "Birth Certificate",
+    "certificate of birth": "Birth Certificate",
+    "icyemezo cy'amavuko": "Birth Certificate",
+    "icyemezo cyamavuko": "Birth Certificate",
+    "amavuko": "Birth Certificate",
+    "acte de naissance": "Birth Certificate",
+    "naissance": "Birth Certificate",
+
+    # Mutuelle (Health Insurance) Renewal
+    "mutuelle": "Mutuelle (Health Insurance) Renewal",
+    "health insurance": "Mutuelle (Health Insurance) Renewal",
+    "community based health insurance": "Mutuelle (Health Insurance) Renewal",
+    "ubwishingizi bw'ubuzima": "Mutuelle (Health Insurance) Renewal",
+    "ubwishingizi bwubuzima": "Mutuelle (Health Insurance) Renewal",
+    "ubwishingizi": "Mutuelle (Health Insurance) Renewal",
+    "assurance maladie": "Mutuelle (Health Insurance) Renewal",
+    "assurance sante": "Mutuelle (Health Insurance) Renewal",
+
+    # Marriage Certificate
+    "marriage certificate": "Marriage Certificate",
+    "wedding certificate": "Marriage Certificate",
+    "icyemezo cy'ubukwe": "Marriage Certificate",
+    "icyemezo cyubukwe": "Marriage Certificate",
+    "ubukwe": "Marriage Certificate",
+    "acte de mariage": "Marriage Certificate",
+    "certificat de mariage": "Marriage Certificate",
+    "mariage": "Marriage Certificate",
+
+    # Driving License Application
+    "driving license": "Driving License Application",
+    "driving licence": "Driving License Application",
+    "driver's license": "Driving License Application",
+    "uruhushya rwo gutwara imodoka": "Driving License Application",
+    "uruhushya rwo gutwara": "Driving License Application",
+    "gutwara imodoka": "Driving License Application",
+    "permis de conduire": "Driving License Application",
+    "permis": "Driving License Application",
 }
 
 GREETING_TOKENS = [
-	"muraho", "hello", "hi", "hey", "bwakeye", "mwiriwe",
-	"amakuru", "bite", "niemeza", "yego",
+    "muraho", "hello", "hi", "hey", "bwakeye", "mwiriwe",
+    "amakuru", "bite", "bonjour", "salut",
 ]
 
 HELP_TOKENS = [
-	"help", "assist", "how", "nkeneye", "ifasha", "ngomba",
-	"ndashaka", "nkenera", "mbaza", "saba", "ubufasha",
-	"guidance", "guide", "ntabwa",
+    "help", "assist", "how", "nkeneye", "ifasha", "ngomba",
+    "ndashaka", "nkenera", "mbaza", "saba", "ubufasha",
+    "guidance", "guide", "aide", "comment",
 ]
 
 
+def _find_service_match(normalized: str, available_services: list[str] | None) -> tuple[str | None, float]:
+    """
+    Find the most specific (longest) keyword match using word-boundary
+    matching, so short substrings can't false-positive inside other words.
+    """
+    for keyword in sorted(KEYWORD_TO_SERVICE.keys(), key=len, reverse=True):
+        pattern = r'\b' + re.escape(keyword) + r'\b'
+        if re.search(pattern, normalized):
+            service_name = KEYWORD_TO_SERVICE[keyword]
+            if available_services and service_name not in available_services:
+                continue
+            return service_name, 0.82
+    return None, 0.0
+
+
 def detect_intent(message: str, available_services: list[str] | None = None) -> IntentResult:
-	normalized = message.strip().lower()
+    normalized = message.strip().lower()
 
-	if any(token in normalized for token in GREETING_TOKENS):
-		return IntentResult(intent="greeting", service_name=None, confidence=0.95)
+    # Check for a service match FIRST, so messages like "Hello, I need a
+    # national ID" still correctly detect the service instead of being
+    # swallowed by the greeting check.
+    matched_service, confidence = _find_service_match(normalized, available_services)
+    if matched_service:
+        return IntentResult(intent="start_service", service_name=matched_service, confidence=confidence)
 
-	matched_service: str | None = None
-	best_confidence = 0.0
+    if any(re.search(r'\b' + re.escape(token) + r'\b', normalized) for token in GREETING_TOKENS):
+        return IntentResult(intent="greeting", service_name=None, confidence=0.95)
 
-	for keyword, service_name in KEYWORD_TO_SERVICE.items():
-		if keyword in normalized:
-			if available_services and service_name not in available_services:
-				continue
-			matched_service = service_name
-			best_confidence = max(best_confidence, 0.82)
+    if any(re.search(r'\b' + re.escape(token) + r'\b', normalized) for token in HELP_TOKENS):
+        return IntentResult(intent="support_request", service_name=None, confidence=0.7)
 
-	if matched_service:
-		return IntentResult(intent="start_service", service_name=matched_service, confidence=best_confidence)
-
-	if any(token in normalized for token in HELP_TOKENS):
-		return IntentResult(intent="support_request", service_name=None, confidence=0.7)
-
-	return IntentResult(intent="general_query", service_name=None, confidence=0.55)
-
+    return IntentResult(intent="general_query", service_name=None, confidence=0.55)

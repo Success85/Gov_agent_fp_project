@@ -9,7 +9,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    phone_number = Column(String(20), unique=True, nullable=False, index=True)
+    phone_number = Column(String(20), unique=True, nullable=True, index=True)
     preferred_language = Column(String(10), nullable=False, default="rw")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -19,11 +19,14 @@ class User(Base):
 
     @validates("phone_number")
     def validate_phone_number(self, key, phone):
+        if phone is None:
+            return None
+
         # Strip whitespace
         phone = phone.strip()
 
         if not phone:
-            raise ValueError("Phone number cannot be empty")
+            return None
 
         cleaned = re.sub(r"[\s\-]", "", phone)
 

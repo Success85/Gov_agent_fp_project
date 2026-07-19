@@ -2,13 +2,13 @@
 const CONFIG = {
   BACKEND_URL: '',
   GUEST_USER_ID: 1,
-  USE_BACKEND_CHAT: false,
+  USE_BACKEND_CHAT: true,
 };
 /*Knowlegde Base [KB] */
 const KB = {
   national_id: {
     id: 'national_id',
-    backendName: 'National ID',
+    backendName: 'Application for National ID',
     backendId: null,
     name:     { en: 'National ID Application',         rw: 'Gusaba Indangamuntu',             fr: 'Demande de carte d\'identité' },
     category: { en: 'Identification',                  rw: 'Imyambabanire',                   fr: 'Identification' },
@@ -47,7 +47,7 @@ const KB = {
   },
   health_insurance: {
     id: 'health_insurance',
-    backendName: 'Health Insurance',
+    backendName: 'Mutuelle (Health Insurance) Renewal',
     backendId: null,
     name:     { en: 'Mutuelle (Health Insurance) Renewal', rw: 'Kwishyura Ubwishingizi bw\'Ubuzima', fr: 'Renouvellement de la mutuelle de santé' },
     category: { en: 'Health',                              rw: 'Ubuzima',                             fr: 'Santé' },
@@ -85,7 +85,7 @@ const KB = {
   },
   driving_license: {
     id: 'driving_license',
-    backendName: 'Driving License',
+    backendName: 'Driving License Application',
     backendId: null,
     name:     { en: 'Driving License Application',    rw: 'Gusaba Uruhushya rwo Gutwara Imodoka', fr: 'Demande de permis de conduire' },
     category: { en: 'Transport',                      rw: 'Ubutwererane',                         fr: 'Transport' },
@@ -365,6 +365,19 @@ const API = {
       return await this._fetch('POST',`/chat/${conversationId}/messages`,{ role, content, language });
     } catch (err) {
       console.error('[API] saveMessage failed:', err);
+      return null;
+    }
+  },
+  async chatWithAI(message, userId, conversationId = null, language = currentLang) {
+    try {
+      return await this._fetch('POST', '/chat', {
+        message,
+        user_id: userId,
+        conversation_id: conversationId,
+        preferred_language: language,
+      });
+    } catch (err) {
+      console.error('[API] chatWithAI failed:', err);
       return null;
     }
   },

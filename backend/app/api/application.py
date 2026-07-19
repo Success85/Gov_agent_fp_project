@@ -43,7 +43,7 @@ def create_application(payload: ApplicationCreate, db: Session = Depends(get_db)
 
 
 @router.get("/{application_id}", response_model=ApplicationRead)
-def get_application(application_id: int, db: Session = Depends(get_db)):
+def get_application(application_id21: int, db: Session = Depends(get_db)):
     application = db.get(Application, application_id)
     if application is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")

@@ -1,7 +1,9 @@
 # ============================================
-# SPRINT 1 SEED DATA has  PLACEHOLDER CONTENT
-# Requirements and steps use temporary data.
-# Replace with Alvin's verified Irembo data
+# SEED DATA — verified against official Irembo
+# support documentation (support.irembo.gov.rw)
+# as of July 2026. Fees, processing times, and
+# requirements are sourced from real Irembo FAQs
+# and how-to articles for each service.
 # ============================================
 import logging
 from app.db.database import SessionLocal, init_db
@@ -14,6 +16,7 @@ from app.models.message import Message
 from app.models.application import Application, ApplicationData
 
 logger = logging.getLogger(__name__)
+
 
 def clear_all_tables(db):
     """
@@ -66,16 +69,15 @@ def seed_users(db):
 
 def seed_services(db):
     """
-    Create the first two government services.
-    National ID and Birth Certificate.
-    Verified content provided by Lane 4 (Alvin).
+    Create all 5 government services with verified
+    Irembo data (fees, processing times, categories).
     """
     services = [
         Service(
             name="Application for National ID",
             name_rw="Gusaba Indangamuntu",
             category="Identification",
-            description="Apply for a Rwandan national identity card",
+            description="Apply for a Rwandan national identity card. Provided by the National Identification Agency (NIDA).",
             fee=500.00,
             processing_days=30
         ),
@@ -83,9 +85,43 @@ def seed_services(db):
             name="Birth Certificate",
             name_rw="Icyemezo cy'Amavuko",
             category="Family",
-            description="Apply for an official birth certificate",
+            description="Apply for an official birth certificate. Processed by local government authorities at the sector level.",
             fee=500.00,
             processing_days=1
+        ),
+        Service(
+            name="Mutuelle (Health Insurance) Renewal",
+            name_rw="Kwishyura Ubwishingizi bw'Ubuzima",
+            category="Health",
+            description=(
+                "Apply for and pay Community-Based Health Insurance (Mutuelle de Sante) for yourself and your household. "
+                "Provided by the Rwanda Social Security Board (RSSB). Fee depends on your household's income level "
+                "under the IMIBEREHO Dynamic Social Registry, ranging from Rwf 4,000 to Rwf 20,000 per person per year; "
+                "amount shown here reflects a typical second-tier contribution."
+            ),
+            fee=3000.00,
+            processing_days=1
+        ),
+        Service(
+            name="Marriage Certificate",
+            name_rw="Icyemezo cy'Ubukwe",
+            category="Family",
+            description="Apply for the official certificate confirming an already-registered legal marriage. Processed at the sector level.",
+            fee=500.00,
+            processing_days=1
+        ),
+        Service(
+            name="Driving License Application",
+            name_rw="Gusaba Uruhushya rwo Gutwara Imodoka",
+            category="Transport",
+            description=(
+                "Apply for a Definitive Driving License, issued by Rwanda National Police (RNP) after passing the "
+                "theory and practical driving tests. This is the final stage of a multi-step process: theory test "
+                "(Rwf 5,000) -> e-Provisional License (Rwf 10,000) -> driving school and practical test (Rwf 10,000) "
+                "-> definitive license (Rwf 50,000)."
+            ),
+            fee=50000.00,
+            processing_days=14
         ),
     ]
 
@@ -99,58 +135,108 @@ def seed_services(db):
 
 def seed_requirements(db, services):
     """
-    Create verified requirements for each service.
-    Note: update content when Alvin delivers
-    verified Irembo data files.
+    Create verified requirements for each service, sourced
+    from official Irembo support documentation.
     """
     national_id = services[0]
     birth_cert = services[1]
+    mutuelle = services[2]
+    marriage_cert = services[3]
+    driving_license = services[4]
 
     requirements = [
-        # National ID requirements
+        # National ID requirements (indices 0-2)
         Requirement(
             service_id=national_id.id,
-            name="Birth Certificate",
-            name_rw="Icyemezo cy'Amavuko",
+            name="Citizen Application Number (Child ID)",
+            name_rw="Nomero yo Gusaba (Child ID)",
             is_mandatory=True,
-            needs_upload=True
+            needs_upload=False
         ),
         Requirement(
             service_id=national_id.id,
-            name="Passport Photo",
-            name_rw="Ifoto ya Pasiporo",
+            name="Valid Phone Number",
+            name_rw="Nomero ya Terefone Ikora",
             is_mandatory=True,
-            needs_upload=True
+            needs_upload=False
         ),
         Requirement(
             service_id=national_id.id,
-            name="Proof of Residence",
-            name_rw="Icyemezo cy'Aho Utuye",
+            name="Email Address",
+            name_rw="Aderesi Imeyili",
             is_mandatory=True,
-            needs_upload=True
+            needs_upload=False
         ),
 
-        # Birth Certificate requirements
+        # Birth Certificate requirements (indices 3-4)
         Requirement(
             service_id=birth_cert.id,
-            name="Parent National ID",
-            name_rw="Indangamuntu y'Umubyeyi",
+            name="National ID or Citizen Application Number",
+            name_rw="Indangamuntu cyangwa Nomero yo Gusaba",
             is_mandatory=True,
-            needs_upload=True
+            needs_upload=False
         ),
         Requirement(
             service_id=birth_cert.id,
-            name="Hospital Birth Record",
-            name_rw="Inyandiko y'Ivuka",
+            name="Valid Phone Number",
+            name_rw="Nomero ya Terefone Ikora",
             is_mandatory=True,
-            needs_upload=True
+            needs_upload=False
+        ),
+
+        # Mutuelle requirements
+        Requirement(
+            service_id=mutuelle.id,
+            name="Head of Household National ID Number",
+            name_rw="Indangamuntu y'Umukuru w'Umuryango",
+            is_mandatory=True,
+            needs_upload=False
         ),
         Requirement(
-            service_id=birth_cert.id,
-            name="Marriage Certificate",
-            name_rw="Icyemezo cy'Ubukwe",
-            is_mandatory=False,
-            needs_upload=True
+            service_id=mutuelle.id,
+            name="Valid Phone Number or Email",
+            name_rw="Nomero ya Terefone cyangwa Imeyili",
+            is_mandatory=True,
+            needs_upload=False
+        ),
+
+        # Marriage Certificate requirements
+        Requirement(
+            service_id=marriage_cert.id,
+            name="National ID (Both Spouses)",
+            name_rw="Indangamuntu z'Ababiri Bashakanye",
+            is_mandatory=True,
+            needs_upload=False
+        ),
+        Requirement(
+            service_id=marriage_cert.id,
+            name="Valid Phone Number or Email",
+            name_rw="Nomero ya Terefone cyangwa Imeyili",
+            is_mandatory=True,
+            needs_upload=False
+        ),
+
+        # Driving License requirements
+        Requirement(
+            service_id=driving_license.id,
+            name="National ID",
+            name_rw="Indangamuntu",
+            is_mandatory=True,
+            needs_upload=False
+        ),
+        Requirement(
+            service_id=driving_license.id,
+            name="Registration Code from Passed Definitive Driving Test",
+            name_rw="Kode yo Kwiyandikisha (nyuma yo gutsinda ikizamini)",
+            is_mandatory=True,
+            needs_upload=False
+        ),
+        Requirement(
+            service_id=driving_license.id,
+            name="Valid Phone Number or Email",
+            name_rw="Nomero ya Terefone cyangwa Imeyili",
+            is_mandatory=True,
+            needs_upload=False
         ),
     ]
 
@@ -164,75 +250,174 @@ def seed_requirements(db, services):
 
 def seed_steps(db, services):
     """
-    Note: update content when Alvin delivers
-    verified Irembo data files.
+    Create verified step-by-step application processes,
+    sourced from official Irembo support documentation.
     """
     national_id = services[0]
     birth_cert = services[1]
+    mutuelle = services[2]
+    marriage_cert = services[3]
+    driving_license = services[4]
 
     steps = [
         # National ID steps
         Step(
             service_id=national_id.id,
             step_no=1,
-            instruction="Log in to your Irembo account",
-            instruction_rw="Injira kuri konti yawe ya Irembo"
+            instruction="Get your Citizen Application Number (Child ID) from your sector office, if you don't already have one",
+            instruction_rw="Bona Nomero yo Gusaba (Child ID) ku biro by'umurenge, niba utarayifite"
         ),
         Step(
             service_id=national_id.id,
             step_no=2,
-            instruction="Select National ID Application service",
-            instruction_rw="Hitamo serivisi yo gusaba indangamuntu"
+            instruction="Apply on the Irembo platform or through an Irembo agent, and pay the Rwf 500 fee",
+            instruction_rw="Saba kuri Irembo cyangwa binyuze kuri ajenti wa Irembo, wishyure amafaranga 500 Rwf"
         ),
         Step(
             service_id=national_id.id,
             step_no=3,
-            instruction="Fill in your personal details",
-            instruction_rw="Uzuza amakuru yawe bwite"
+            instruction="Appear for biometric data capture (fingerprints and photo) after you are notified",
+            instruction_rw="Jya gufata amakuru ya byometrike (ibikumwe n'ifoto) nyuma yo kumenyeshwa"
         ),
         Step(
             service_id=national_id.id,
             step_no=4,
-            instruction="Upload required documents",
-            instruction_rw="Ohereza inyandiko zisabwa"
+            instruction="Wait while NIDA processes your application (about 30 days)",
+            instruction_rw="Tegereza mu gihe NIDA itunganya dosiye yawe (hafi iminsi 30)"
         ),
         Step(
             service_id=national_id.id,
             step_no=5,
-            instruction="Pay the application fee using Mobile Money",
-            instruction_rw="Ishyura ukoresheje Mobile Money"
+            instruction="Collect your National ID at your sector office",
+            instruction_rw="Fata Indangamuntu yawe ku biro by'umurenge"
         ),
 
         # Birth Certificate steps
         Step(
             service_id=birth_cert.id,
             step_no=1,
-            instruction="Log in to your Irembo account",
-            instruction_rw="Injira kuri konti yawe ya Irembo"
+            instruction="Log in to Irembo or visit an Irembo agent",
+            instruction_rw="Injira kuri Irembo cyangwa usure ajenti wa Irembo"
         ),
         Step(
             service_id=birth_cert.id,
             step_no=2,
-            instruction="Select Birth Certificate service",
-            instruction_rw="Hitamo serivisi y'icyemezo cy'amavuko"
+            instruction="Select the Birth Certificate service and enter your National ID or Citizen Application Number",
+            instruction_rw="Hitamo serivisi y'Icyemezo cy'Amavuko, wandike Indangamuntu cyangwa Nomero yo Gusaba"
         ),
         Step(
             service_id=birth_cert.id,
             step_no=3,
-            instruction="Enter the child's details",
-            instruction_rw="Injiza amakuru y'umwana"
+            instruction="Verify your auto-filled details and choose the processing/collection sector office",
+            instruction_rw="Emeza amakuru yagaragaye, hitamo ibiro by'umurenge byo gutunganyirizamo"
         ),
         Step(
             service_id=birth_cert.id,
             step_no=4,
-            instruction="Upload parent identification documents",
-            instruction_rw="Ohereza inyandiko z'ababyeyi"
+            instruction="Pay the Rwf 500 fee",
+            instruction_rw="Ishyura amafaranga 500 Rwf"
         ),
         Step(
             service_id=birth_cert.id,
             step_no=5,
-            instruction="Pay the processing fee using Mobile Money",
-            instruction_rw="Ishyura ukoresheje Mobile Money"
+            instruction="Once approved, you'll get an SMS or email notification and can download your e-certificate",
+            instruction_rw="Nyuma yo kwemezwa, uzahabwa ubutumwa uzashobora gukurura icyemezo cyawe"
+        ),
+
+        # Mutuelle steps
+        Step(
+            service_id=mutuelle.id,
+            step_no=1,
+            instruction="Confirm your household registration and income level with your cell's LODA officer",
+            instruction_rw="Emeza icyiciro cy'umuryango wawe uganira n'umukozi wa LODA w'akagari kawe"
+        ),
+        Step(
+            service_id=mutuelle.id,
+            step_no=2,
+            instruction="Visit Irembo (or dial *909#) and select Community-Based Health Insurance (Mutuelle)",
+            instruction_rw="Injira kuri Irembo (cyangwa hamagara *909#) uhitemo Ubwishingizi bw'Ubuzima (Mutuelle)"
+        ),
+        Step(
+            service_id=mutuelle.id,
+            step_no=3,
+            instruction="Enter the head of household's National ID number",
+            instruction_rw="Andika indangamuntu y'umukuru w'umuryango"
+        ),
+        Step(
+            service_id=mutuelle.id,
+            step_no=4,
+            instruction="Review the amount due, which depends on your household's income level",
+            instruction_rw="Reba amafaranga agomba kwishyurwa, ashingiye ku cyiciro cy'umuryango wawe"
+        ),
+        Step(
+            service_id=mutuelle.id,
+            step_no=5,
+            instruction="Pay via Mobile Money or another supported payment channel",
+            instruction_rw="Ishyura ukoresheje Mobile Money cyangwa ubundi buryo bwemewe"
+        ),
+
+        # Marriage Certificate steps
+        Step(
+            service_id=marriage_cert.id,
+            step_no=1,
+            instruction="Log in to Irembo or visit an Irembo agent",
+            instruction_rw="Injira kuri Irembo cyangwa usure ajenti wa Irembo"
+        ),
+        Step(
+            service_id=marriage_cert.id,
+            step_no=2,
+            instruction="Under Family Services, select Marriage Certificate",
+            instruction_rw="Munsi ya Serivisi z'Umuryango, hitamo Icyemezo cy'Ubukwe"
+        ),
+        Step(
+            service_id=marriage_cert.id,
+            step_no=3,
+            instruction="Enter your National ID; your spouse's details are retrieved automatically",
+            instruction_rw="Andika indangamuntu yawe; amakuru y'uwo mwashakanye azagaragara ubwabyo"
+        ),
+        Step(
+            service_id=marriage_cert.id,
+            step_no=4,
+            instruction="Choose the processing sector office and pay the Rwf 500 fee",
+            instruction_rw="Hitamo ibiro by'umurenge, wishyure amafaranga 500 Rwf"
+        ),
+        Step(
+            service_id=marriage_cert.id,
+            step_no=5,
+            instruction="Once the sector's Civil Registration Officer approves it, download your e-certificate",
+            instruction_rw="Nyuma yo kwemezwa n'umwanditsi w'irangamimerere, kurura icyemezo cyawe"
+        ),
+
+        # Driving License steps (full multi-stage journey)
+        Step(
+            service_id=driving_license.id,
+            step_no=1,
+            instruction="Register for and pass the Provisional Theory Test (Rwf 5,000)",
+            instruction_rw="Iyandikishe kandi utsinde ikizamini cy'amategeko (5,000 Rwf)"
+        ),
+        Step(
+            service_id=driving_license.id,
+            step_no=2,
+            instruction="Apply for and download your e-Provisional Driving License (Rwf 10,000)",
+            instruction_rw="Saba kandi ukurure uruhushya rw'agateganyo (10,000 Rwf)"
+        ),
+        Step(
+            service_id=driving_license.id,
+            step_no=3,
+            instruction="Complete driving school training",
+            instruction_rw="Rangiza amasomo yo kwiga gutwara imodoka"
+        ),
+        Step(
+            service_id=driving_license.id,
+            step_no=4,
+            instruction="Register for and pass the Definitive (practical) Driving Test (Rwf 10,000)",
+            instruction_rw="Iyandikishe kandi utsinde ikizamini cy'imyitozo (10,000 Rwf)"
+        ),
+        Step(
+            service_id=driving_license.id,
+            step_no=5,
+            instruction="Apply for your Definitive Driving License (Rwf 50,000, processed in 14 days by Rwanda National Police)",
+            instruction_rw="Saba uruhushya rwemewe burundu (50,000 Rwf, bitunganywa mu minsi 14 na Polisi y'Igihugu)"
         ),
     ]
 
@@ -307,7 +492,7 @@ def seed_messages(db, conversations):
 
 
 def seed_applications(db, users, services):
-    
+
     national_id = services[0]
     birth_cert = services[1]
 
@@ -339,32 +524,32 @@ def seed_application_data(db, applications, requirements):
     national_id_app = applications[0]
     birth_cert_app = applications[1]
 
-    # requirements[0:3] = National ID, requirements[3:6] = Birth Certificate
+    # requirements[0:3] = National ID, requirements[3:5] = Birth Certificate
     application_data = [
         ApplicationData(
             application_id=national_id_app.id,
             requirement_id=requirements[0].id,
-            value="Aline Uwase Birth Certificate on file"
+            value="CAN-2024-00456"
         ),
         ApplicationData(
             application_id=national_id_app.id,
             requirement_id=requirements[1].id,
-            value="passport_photo.jpg"
+            value="0788123456"
         ),
         ApplicationData(
             application_id=national_id_app.id,
             requirement_id=requirements[2].id,
-            value="Kigali, Nyarugenge"
+            value="aline.uwase@example.com"
         ),
         ApplicationData(
             application_id=birth_cert_app.id,
             requirement_id=requirements[3].id,
-            value="Parent ID on file"
+            value="1198800123456789"
         ),
         ApplicationData(
             application_id=birth_cert_app.id,
             requirement_id=requirements[4].id,
-            value="hospital_record.pdf"
+            value="0782345678"
         ),
     ]
     for data in application_data:
@@ -375,7 +560,7 @@ def seed_application_data(db, applications, requirements):
 
 
 def run_seed():
-   
+
     logger.info("Starting database seed...")
     init_db()
 

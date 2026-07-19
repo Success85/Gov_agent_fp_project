@@ -101,7 +101,7 @@ def build_ai_reply(db: Session, conversation_id: int, message: str, service_id: 
                 description=matched_service.description,
                 fee=matched_service.fee,
                 requirements=[item.name for item in overview["requirements"]],
-                steps=[item.description for item in overview["steps"]],
+                steps=[item.instruction for item in overview["steps"]],
             )
 
     if selected_context is None and selected_service_id is not None:
@@ -113,7 +113,7 @@ def build_ai_reply(db: Session, conversation_id: int, message: str, service_id: 
             description=selected_service.description,
             fee=selected_service.fee,
             requirements=[item.name for item in overview["requirements"]],
-            steps=[item.description for item in overview["steps"]],
+            steps=[item.instruction for item in overview["steps"]],
         )
 
     if selected_context is None:
