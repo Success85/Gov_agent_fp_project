@@ -24,14 +24,22 @@ KEYWORD_TO_SERVICE: dict[str, str] = {
     "carte didentite": "Application for National ID",
     "identite nationale": "Application for National ID",
 
-    # Birth Certificate
+    # Birth Certificate (specific: certificate for an EXISTING birth record)
     "birth certificate": "Birth Certificate",
     "certificate of birth": "Birth Certificate",
     "icyemezo cy'amavuko": "Birth Certificate",
     "icyemezo cyamavuko": "Birth Certificate",
-    "amavuko": "Birth Certificate",
     "acte de naissance": "Birth Certificate",
-    "naissance": "Birth Certificate",
+
+    # Birth Record (registering a NEW birth; also the generic fallback
+    # for bare "birth"/"amavuko"/"naissance" without a qualifier)
+    "birth record": "Birth Record",
+    "birth registration": "Birth Record",
+    "register a birth": "Birth Record",
+    "kwandikisha amavuko": "Birth Record",
+    "enregistrement de naissance": "Birth Record",
+    "amavuko": "Birth Record",
+    "naissance": "Birth Record",
 
     # Mutuelle (Health Insurance) Renewal
     "mutuelle": "Mutuelle (Health Insurance) Renewal",
@@ -43,15 +51,18 @@ KEYWORD_TO_SERVICE: dict[str, str] = {
     "assurance maladie": "Mutuelle (Health Insurance) Renewal",
     "assurance sante": "Mutuelle (Health Insurance) Renewal",
 
-    # Marriage Certificate
-    "marriage certificate": "Marriage Certificate",
-    "wedding certificate": "Marriage Certificate",
-    "icyemezo cy'ubukwe": "Marriage Certificate",
-    "icyemezo cyubukwe": "Marriage Certificate",
-    "ubukwe": "Marriage Certificate",
-    "acte de mariage": "Marriage Certificate",
-    "certificat de mariage": "Marriage Certificate",
-    "mariage": "Marriage Certificate",
+    # Marriage Declaration (declaring an upcoming marriage)
+    "marriage declaration": "Marriage Declaration",
+    "declare marriage": "Marriage Declaration",
+    "kwiyandikisha ku bukwe": "Marriage Declaration",
+    "icyemezo cy'ubukwe": "Marriage Declaration",
+    "icyemezo cyubukwe": "Marriage Declaration",
+    "ubukwe": "Marriage Declaration",
+    "wedding": "Marriage Declaration",
+    "get married": "Marriage Declaration",
+    "acte de mariage": "Marriage Declaration",
+    "certificat de mariage": "Marriage Declaration",
+    "mariage": "Marriage Declaration",
 
     # Driving License Application
     "driving license": "Driving License Application",
@@ -108,3 +119,42 @@ def detect_intent(message: str, available_services: list[str] | None = None) -> 
         return IntentResult(intent="support_request", service_name=None, confidence=0.7)
 
     return IntentResult(intent="general_query", service_name=None, confidence=0.55)
+
+
+YES_TOKENS = [
+    "yes", "yego", "oui", "yeah", "sure", "okay", "ok", "proceed",
+    "continue", "tangira", "reka tugende", "yee",
+]
+
+NO_TOKENS = [
+    "no", "oya", "non", "nope", "cancel", "reka", "ntabwo", "ntago",
+]
+
+
+def detect_confirmation(message: str) -> str | None:
+    """
+    Detects a yes/no confirmation in Kinyarwanda, English, or French.
+    Returns 'yes', 'no', or None if the message isn't a clear confirmation.
+    """
+    normalized = message.strip().lower()
+
+    if any(re.search(r'\b' + re.escape(token) + r'\b', normalized) for token in NO_TOKENS):
+        return "no"
+    if any(re.search(r'\b' + re.escape(token) + r'\b', normalized) for token in YES_TOKENS):
+        return "yes"
+    return None
+
+
+SKIP_TOKENS = [
+    "skip", "none", "n/a", "na", "nta", "ntabwo mfite", "sinabifite",
+    "i don't have", "i dont have", "don't have one", "dont have one",
+    "not applicable", "ntacyo",
+]
+
+
+def detect_skip(message: str) -> bool:
+    """
+    Detects whether the user wants to skip an optional requirement.
+    """
+    normalized = message.strip().lower()
+    return any(token in normalized for token in SKIP_TOKENS)

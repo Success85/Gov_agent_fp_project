@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship, validates
 from datetime import datetime, timezone
 from app.db.base import Base
@@ -12,6 +12,11 @@ class Conversation(Base):
     status = Column(String(20), nullable=False, default="active")
     started_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     ended_at = Column(DateTime, nullable=True)
+
+    # Application-flow state tracking
+    pending_service_id = Column(Integer, ForeignKey("services.id"), nullable=True)
+    awaiting_requirement_id = Column(Integer, ForeignKey("requirements.id"), nullable=True)
+    awaiting_payment_confirmation = Column(Boolean, nullable=False, default=False)
 
     # Relationships
     user = relationship("User", back_populates="conversations")
