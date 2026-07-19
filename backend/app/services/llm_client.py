@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LLMResponse:
     text: str
-    model: str = "gemini-3.5-flash"
+    model: str = "gemini-2.5-flash"
 
 
 FALLBACK_TEXT = {
@@ -22,7 +22,7 @@ FALLBACK_TEXT = {
 
 
 class LLMClient:
-    def __init__(self, model_name: str = "gemini-3.5-flash") -> None:
+    def __init__(self, model_name: str = "gemini-2.5-flash") -> None:
         self.model_name = model_name
         api_key = os.getenv("GEMINI_API_KEY")
         self._client = genai.Client(api_key=api_key) if api_key else None

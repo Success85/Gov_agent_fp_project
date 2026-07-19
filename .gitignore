@@ -33,3 +33,7 @@ Thumbs.db
 # Test cache
 .pytest_cache/
 node_modules/
+
+# Uploaded application documents (runtime data)
+storage/*
+!storage/.gitkeep

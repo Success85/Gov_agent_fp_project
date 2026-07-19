@@ -63,6 +63,8 @@ KEYWORD_TO_SERVICE: dict[str, str] = {
     "acte de mariage": "Marriage Declaration",
     "certificat de mariage": "Marriage Declaration",
     "mariage": "Marriage Declaration",
+    "marriage": "Marriage Declaration",
+    "declare a marriage": "Marriage Declaration",
 
     # Driving License Application
     "driving license": "Driving License Application",
