@@ -10,6 +10,7 @@ from app.models.message import Message
 from app.models.application import Application, ApplicationData
 from app.models.upload import Upload
 from app.models.payment import Payment
+from app.models.feedback import Feedback
 
 logger = logging.getLogger(__name__)
 
@@ -424,6 +425,32 @@ def seed_uploads(db, applications):
     logger.info(f"Seeded {len(uploads)} uploads")
     return uploads
 
+def seed_feedback(db, messages):
+   
+    assistant_messages = [
+        m for m in messages if m.role == "assistant"
+    ]
+
+    feedback_data = [
+        Feedback(
+            message_id=assistant_messages[0].id,
+            rating=5,
+            comment="Byari byumvikana neza cyane"
+        ),
+        Feedback(
+            message_id=assistant_messages[1].id,
+            rating=4,
+            comment="Neza ariko byagombye kuba birambuye"
+        ),
+    ]
+
+    for feedback in feedback_data:
+        db.add(feedback)
+
+    db.commit()
+    logger.info(f"Seeded {len(feedback_data)} feedback records")
+    return feedback_data
+
 def run_seed():
    
     logger.info("Starting database seed...")
@@ -444,6 +471,8 @@ def run_seed():
         application_data = seed_application_data(db, applications)
         payments = seed_payments(db, applications)
         uploads = seed_uploads(db, applications)
+        feedback = seed_feedback(db, messages)
+
 
         logger.info("Database seeded successfully")
         logger.info(f"Users: {len(users)}")
@@ -456,6 +485,7 @@ def run_seed():
         logger.info(f"Application Data: {len(application_data)}")
         logger.info(f"Payments: {len(payments)}")
         logger.info(f"Uploads: {len(uploads)}")
+        logger.info(f"Feedback: {len(feedback)}")
 
     except Exception as e:
         logger.error(f"Seed failed: {e}")
