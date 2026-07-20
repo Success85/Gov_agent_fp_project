@@ -1,0 +1,55 @@
+{
+  "name": "Application for Definitive Driving License",
+  "name_rw": "Gusaba Uruhushya Ntakuka rwo Gutwara",
+  "category": "Transport",
+  "description": "Apply for the definitive driving license after passing the definitive driving test, provided by the Rwanda National Police (RNP) via IremboGov. The service costs 50,000 RWF and is processed within 14 days. Applicants must be 18 or above and hold a registration code from the passed definitive test. The definitive license is valid for 10 years. No documents are uploaded.",
+  "fee": 50000,
+  "processing_days": 14,
+  "requirements": [
+    {
+      "name": "Registration code (from passed definitive test)",
+      "name_rw": "Kode yo Kwiyandikisha (yo mu kizamini ntakuka watsinze)",
+      "is_mandatory": true,
+      "needs_upload": false
+    },
+    {
+      "name": "Valid phone number",
+      "name_rw": "Nimero ya Telefone Ikora",
+      "is_mandatory": true,
+      "needs_upload": false
+    },
+    {
+      "name": "Email address",
+      "name_rw": "Aderesi ya Imeyili",
+      "is_mandatory": true,
+      "needs_upload": false
+    }
+  ],
+  "steps": [
+    {
+      "step_no": 1,
+      "instruction": "Confirm eligibility: aged 18 or above and have passed the definitive driving test.",
+      "instruction_rw": "Emeza ko wujuje ibisabwa: ufite imyaka 18 cyangwa irenga kandi watsinze ikizamini ntakuka."
+    },
+    {
+      "step_no": 2,
+      "instruction": "On IremboGov, under Police, choose Application for Driving License (Definitive).",
+      "instruction_rw": "Kuri IremboGov, munsi ya Polisi, hitamo Gusaba Uruhushya rwo Gutwara (Ntakuka)."
+    },
+    {
+      "step_no": 3,
+      "instruction": "Enter your registration code; your details are retrieved automatically.",
+      "instruction_rw": "Injiza kode yo kwiyandikisha; amakuru yawe arahita agaragara."
+    },
+    {
+      "step_no": 4,
+      "instruction": "Pay the 50,000 RWF fee via Mobile Money.",
+      "instruction_rw": "Ishyura amafaranga 50,000 RWF ukoresheje MoMo."
+    },
+    {
+      "step_no": 5,
+      "instruction": "Receive your definitive driving license within 14 days (valid for 10 years).",
+      "instruction_rw": "Wakire uruhushya rwawe ntakuka rwo gutwara mu minsi 14 (rumara imyaka 10)."
+    }
+  ]
+}
