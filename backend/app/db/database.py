@@ -6,6 +6,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from app.db.base import Base
 from app.models.application import Application, ApplicationData
+from app.models.upload import Upload
+from app.models.payment import Payment
 
 load_dotenv()
 
