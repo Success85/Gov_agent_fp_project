@@ -1,8 +1,4 @@
-# ============================================
-# SPRINT 1 SEED DATA has  PLACEHOLDER CONTENT
-# Requirements and steps use temporary data.
-# Replace with Alvin's verified Irembo data
-# ============================================
+from datetime import datetime, timezone
 import logging
 from app.db.database import SessionLocal, create_tables
 from app.models.user import User
@@ -12,17 +8,18 @@ from app.models.steps import Step
 from app.models.conversation import Conversation
 from app.models.message import Message
 from app.models.application import Application, ApplicationData
+from app.models.upload import Upload
+from app.models.payment import Payment
 
 logger = logging.getLogger(__name__)
 
 def clear_all_tables(db):
-    """
-    Delete all data from all tables in the correct order
-    to respect foreign key constraints.
-    """
+   
     try:
         db.query(Message).delete()
         db.query(Conversation).delete()
+        db.query(Upload).delete()
+        db.query(Payment).delete()
         db.query(ApplicationData).delete()
         db.query(Application).delete()
         db.query(Requirement).delete()
@@ -38,9 +35,7 @@ def clear_all_tables(db):
 
 
 def seed_users(db):
-    """
-    Create sample citizen and admin accounts.
-    """
+   
     users = [
         User(
             phone_number="0781234567",
@@ -65,11 +60,7 @@ def seed_users(db):
 
 
 def seed_services(db):
-    """
-    Create the first two government services.
-    National ID and Birth Certificate.
-    Verified content provided by Lane 4 (Alvin).
-    """
+  
     services = [
         Service(
             name="Application for National ID",
@@ -98,11 +89,7 @@ def seed_services(db):
 
 
 def seed_requirements(db, services):
-    """
-    Create verified requirements for each service.
-    Note: update content when Alvin delivers
-    verified Irembo data files.
-    """
+   
     national_id = services[0]
     birth_cert = services[1]
 
@@ -163,10 +150,7 @@ def seed_requirements(db, services):
 
 
 def seed_steps(db, services):
-    """
-    Note: update content when Alvin delivers
-    verified Irembo data files.
-    """
+    
     national_id = services[0]
     birth_cert = services[1]
 
@@ -245,9 +229,7 @@ def seed_steps(db, services):
 
 
 def seed_conversations(db, users):
-    """
-    Create sample conversations for testing.
-    """
+    
     conversations = [
         Conversation(
             user_id=users[0].id,
@@ -268,9 +250,7 @@ def seed_conversations(db, users):
 
 
 def seed_messages(db, conversations):
-    """
-    Create sample messages for testing.
-    """
+    
     messages = [
         Message(
             conversation_id=conversations[0].id,
@@ -384,6 +364,65 @@ def seed_application_data(db, applications):
     )
     return application_data
 
+
+def seed_payments(db, applications):
+   
+    submitted_app = applications[0]
+    inprogress_app = applications[1]
+
+    payments = [
+        Payment(
+            application_id=submitted_app.id,
+            transaction_reference="FLW-DEMO0001",
+            amount=500.00,
+            status="confirmed",
+            proof_reference="PROOF-DEMO-001",
+            paid_at=datetime.now(timezone.utc)
+        ),
+        Payment(
+            application_id=inprogress_app.id,
+            transaction_reference="FLW-DEMO0002",
+            amount=500.00,
+            status="pending"
+        ),
+    ]
+
+    for payment in payments:
+        db.add(payment)
+
+    db.commit()
+    logger.info(f"Seeded {len(payments)} payments")
+    return payments
+
+
+def seed_uploads(db, applications):
+   
+    submitted_app = applications[0]
+
+    uploads = [
+        Upload(
+            application_id=submitted_app.id,
+            file_name="birth_certificate.pdf",
+            file_path=f"storage/uploads/{submitted_app.id}/birth_certificate.pdf",
+            file_type="application/pdf",
+            file_size_kb=512
+        ),
+        Upload(
+            application_id=submitted_app.id,
+            file_name="passport_photo.jpg",
+            file_path=f"storage/uploads/{submitted_app.id}/passport_photo.jpg",
+            file_type="image/jpeg",
+            file_size_kb=256
+        ),
+    ]
+
+    for upload in uploads:
+        db.add(upload)
+
+    db.commit()
+    logger.info(f"Seeded {len(uploads)} uploads")
+    return uploads
+
 def run_seed():
    
     logger.info("Starting database seed...")
@@ -402,6 +441,8 @@ def run_seed():
         messages = seed_messages(db, conversations)
         applications = seed_applications(db, users, services)
         application_data = seed_application_data(db, applications)
+        payments = seed_payments(db, applications)
+        uploads = seed_uploads(db, applications)
 
         logger.info("Database seeded successfully")
         logger.info(f"Users: {len(users)}")
@@ -412,6 +453,8 @@ def run_seed():
         logger.info(f"Messages: {len(messages)}")
         logger.info(f"Applications: {len(applications)}")
         logger.info(f"Application Data: {len(application_data)}")
+        logger.info(f"Payments: {len(payments)}")
+        logger.info(f"Uploads: {len(uploads)}")
 
     except Exception as e:
         logger.error(f"Seed failed: {e}")

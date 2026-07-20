@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, String, Text, ForeignKey
 from sqlalchemy.orm import relationship, validates
+from sqlalchemy import Column, Integer, Text, ForeignKey, UniqueConstraint
 from app.db.base import Base
+
 
 
 class Step(Base):
