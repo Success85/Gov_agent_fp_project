@@ -1,0 +1,55 @@
+{
+  "name": "Application for Provisional Driving License",
+  "name_rw": "Gusaba Uruhushya rw'Agateganyo rwo Gutwara",
+  "category": "Transport",
+  "description": "Apply for the provisional (e-provisional) driving license after passing the provisional driving test, provided by the Rwanda National Police (RNP) via IremboGov. The service costs 10,000 RWF and the license can be downloaded once issued. Applicants must be 18 or above and hold a registration code from the passed test. No documents are uploaded.",
+  "fee": 10000,
+  "processing_days": 1,
+  "requirements": [
+    {
+      "name": "Registration code (from passed test)",
+      "name_rw": "Kode yo Kwiyandikisha (yo mu kizamini watsinze)",
+      "is_mandatory": true,
+      "needs_upload": false
+    },
+    {
+      "name": "Valid phone number",
+      "name_rw": "Nimero ya Telefone Ikora",
+      "is_mandatory": true,
+      "needs_upload": false
+    },
+    {
+      "name": "Email address",
+      "name_rw": "Aderesi ya Imeyili",
+      "is_mandatory": true,
+      "needs_upload": false
+    }
+  ],
+  "steps": [
+    {
+      "step_no": 1,
+      "instruction": "Confirm eligibility: aged 18 or above and have passed the provisional driving test.",
+      "instruction_rw": "Emeza ko wujuje ibisabwa: ufite imyaka 18 cyangwa irenga kandi watsinze ikizamini cy'agateganyo."
+    },
+    {
+      "step_no": 2,
+      "instruction": "On IremboGov, under Police, choose Application for Driving License (Provisional).",
+      "instruction_rw": "Kuri IremboGov, munsi ya Polisi, hitamo Gusaba Uruhushya rwo Gutwara (Agateganyo)."
+    },
+    {
+      "step_no": 3,
+      "instruction": "Enter your registration code; your details are retrieved automatically.",
+      "instruction_rw": "Injiza kode yo kwiyandikisha; amakuru yawe arahita agaragara."
+    },
+    {
+      "step_no": 4,
+      "instruction": "Pay the 10,000 RWF fee via Mobile Money.",
+      "instruction_rw": "Ishyura amafaranga 10,000 RWF ukoresheje MoMo."
+    },
+    {
+      "step_no": 5,
+      "instruction": "Download your provisional driving license once it is issued.",
+      "instruction_rw": "Manura uruhushya rwawe rw'agateganyo rwo gutwara igihe rumaze gutangwa."
+    }
+  ]
+}
