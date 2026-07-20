@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 def clear_all_tables(db):
    
     try:
+        db.query(Feedback).delete()
         db.query(Message).delete()
         db.query(Conversation).delete()
         db.query(Upload).delete()

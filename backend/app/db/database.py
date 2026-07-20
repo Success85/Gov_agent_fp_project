@@ -8,6 +8,7 @@ from app.db.base import Base
 from app.models.application import Application, ApplicationData
 from app.models.upload import Upload
 from app.models.payment import Payment
+from app.models.feedback import Feedback
 
 load_dotenv()
 
