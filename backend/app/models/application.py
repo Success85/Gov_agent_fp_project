@@ -27,6 +27,11 @@ class Application(Base):
         cascade="all, delete-orphan"
     )
     uploads = relationship("Upload", back_populates="application")
+    payment = relationship(
+    "Payment",
+    back_populates="application",
+    uselist=False
+)
 
     @validates("status")
     def validate_status(self, key, status):
