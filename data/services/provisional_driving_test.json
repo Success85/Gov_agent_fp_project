@@ -1,0 +1,55 @@
+{
+  "name": "Registration for Provisional Driving Test",
+  "name_rw": "Kwiyandikisha ku Kizamini Cy'Agateganyo cyo Gutwara",
+  "category": "Transport",
+  "description": "Register for the provisional (theory) driving test, provided by the Rwanda National Police (RNP) via IremboGov. The service costs 5,000 RWF and the registration is processed in 1 day. Applicants must be 16 or above with a Rwandan National ID. It is a slot-based service, so a test slot is allocated on payment. No documents are uploaded.",
+  "fee": 5000,
+  "processing_days": 1,
+  "requirements": [
+    {
+      "name": "National ID number",
+      "name_rw": "Nimero y'Indangamuntu",
+      "is_mandatory": true,
+      "needs_upload": false
+    },
+    {
+      "name": "Valid phone number",
+      "name_rw": "Nimero ya Telefone Ikora",
+      "is_mandatory": true,
+      "needs_upload": false
+    },
+    {
+      "name": "Email address",
+      "name_rw": "Aderesi ya Imeyili",
+      "is_mandatory": false,
+      "needs_upload": false
+    }
+  ],
+  "steps": [
+    {
+      "step_no": 1,
+      "instruction": "Confirm eligibility: a Rwandan citizen aged 16 or above with a National ID.",
+      "instruction_rw": "Emeza ko wujuje ibisabwa: umunyarwanda ufite imyaka 16 cyangwa irenga ufite indangamuntu."
+    },
+    {
+      "step_no": 2,
+      "instruction": "On IremboGov, under Police, choose Registration for Driving Test (Provisional).",
+      "instruction_rw": "Kuri IremboGov, munsi ya Polisi, hitamo Kwiyandikisha ku Kizamini cyo Gutwara (Agateganyo)."
+    },
+    {
+      "step_no": 3,
+      "instruction": "Enter your details and select a test date and location (a slot is allocated on payment).",
+      "instruction_rw": "Injiza amakuru yawe uhitemo itariki n'aho ikizamini kizabera (umwanya utangwa nyuma yo kwishyura)."
+    },
+    {
+      "step_no": 4,
+      "instruction": "Pay the 5,000 RWF fee via Mobile Money before the billing number expires.",
+      "instruction_rw": "Ishyura amafaranga 5,000 RWF ukoresheje MoMo mbere y'uko nimero yo kwishyura irangira."
+    },
+    {
+      "step_no": 5,
+      "instruction": "Attend the provisional driving test on your allocated slot.",
+      "instruction_rw": "Itabire ikizamini cy'agateganyo cyo gutwara ku munsi wagenewe."
+    }
+  ]
+}
