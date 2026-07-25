@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+    <!-- HEADER -->
     <header class="header">
         <div class="header-inner">
 
@@ -24,11 +25,24 @@
             <button class="lang-btn" data-lang="fr" aria-pressed="false">French</button>
         </nav>
 
+        <!-- Apply button-->
+        <button class="header-apply-btn" id="header-apply-btn" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
+            <span id="header-apply-label">Apply</span>
+        </button>
+
         </div>
     </header>
 
+    <!-- MAIN - Chat panel and Sidebar -->
     <main class="main">
         <div class="layout">
+        <!-- Chat Panel -->
         <section class="chat-panel" aria-label="Chat with GovAgent">
             <div class="status-bar" id="status-bar">
             <span class="status-indicator" aria-hidden="true"></span>
@@ -84,7 +98,7 @@
             <p class="voice-note" id="voice-note" role="status" aria-live="polite"></p>
         </section>
 
-        
+        <!-- Sidebar -->
         <aside class="sidebar" aria-label="Service information">
 
             <div class="service-card" id="service-card" hidden>
@@ -93,25 +107,29 @@
                 <span class="service-fee" id="sc-fee"></span>
             </div>
             <h2 class="service-card-title" id="sc-title"></h2>
-
             <div class="service-section">
                 <h3 class="service-section-heading" id="sc-req-heading">Requirements</h3>
                 <ul class="service-list" id="sc-requirements"></ul>
             </div>
-
             <div class="service-section">
                 <h3 class="service-section-heading" id="sc-steps-heading">Steps</h3>
                 <ol class="service-steps" id="sc-steps"></ol>
             </div>
-
             <div class="service-source">
                 <span id="sc-source-text">Source: Irembo verified data</span>
             </div>
+            <!-- Apply button -->
             <button class="apply-btn" id="apply-btn" type="button" hidden>
-                Apply for this service
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="9 11 12 14 22 4"/>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+            <span id="apply-btn-label">Apply for this service</span>
             </button>
             </div>
 
+            <!-- Quick Panel -->
             <div class="quick-panel" id="quick-panel">
             <h3 class="panel-heading" id="quick-heading">Available Services</h3>
             <div class="quick-list" id="quick-list" role="list"></div>
@@ -119,7 +137,7 @@
 
             <div class="upload-panel" id="upload-panel" hidden>
             <div class="upload-panel-header">
-                <h3 class="panel-heading" id="upload-heading">Upload your Documents</h3>
+                <h3 class="panel-heading" id="upload-heading">Upload documents</h3>
                 <span class="upload-ref" id="upload-ref"></span>
             </div>
             <p class="upload-intro" id="upload-intro">
@@ -127,6 +145,7 @@
             </p>
             <div class="upload-fields" id="upload-fields"></div>
             <div class="upload-actions">
+                <input type="file" placeholder="upload files" class="upload_file">
                 <button class="upload-submit-btn" id="upload-submit-btn" type="button">
                 Submit
                 </button>
@@ -136,7 +155,8 @@
             </div>
             <p class="upload-status" id="upload-status" role="status" aria-live="polite"></p>
             </div>
-
+            
+            <!-- Voice toggle -->
             <div class="voice-panel">
             <div class="voice-panel-header">
                 <h3 class="panel-heading" id="voice-panel-heading">Voice Responses</h3>
@@ -152,6 +172,7 @@
             </p>
             </div>
 
+            <!-- Info Panel-->
             <div class="info-panel">
             <h3 class="panel-heading" id="info-heading">About</h3>
             <p class="panel-note" id="info-note">
