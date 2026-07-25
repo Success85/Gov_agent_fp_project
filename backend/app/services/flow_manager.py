@@ -2,7 +2,10 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.models.application import Application, ApplicationData, Conversation, Message
+from pathlib import Path
+
+from app.core.config import get_settings
+from app.models.application import Application, ApplicationData, Conversation, GeneratedDocument, Message
 from app.models.service import Service
 from app.models.requirement import Requirement
 from app.models.steps import Step
@@ -151,10 +154,46 @@ def _application_summary_text(db: Session, application: Application, language: s
     return "\n".join(lines)
 
 
+def _find_collected_email(application: Application) -> str | None:
+    if application.payment_email:
+        return application.payment_email
+    for data in application.data:
+        requirement = data.requirement
+        if requirement and data.value and "email" in requirement.name.lower():
+            return data.value
+    return None
+
+
 def build_ai_reply(db: Session, conversation_id: int, message: str, service_id: int | None = None, language: str = "rw") -> tuple[Message, str, str | None, int | None]:
     conversation = db.get(Conversation, conversation_id)
     if conversation is None:
         raise ValueError("Conversation not found")
+
+    # STATE: collecting the payment email (final step before payment)
+    if conversation.awaiting_payment_email:
+        application = conversation.application
+        candidate = message.strip()
+        if application is not None and "@" in candidate and "." in candidate.split("@")[-1]:
+            application.payment_email = candidate
+            conversation.awaiting_payment_email = False
+            db.add(application)
+            db.add(conversation)
+            db.commit()
+            text = (
+                "Nyamuneka koresha buto yo kwishyura kugira ngo urangize ubusabe bwawe."
+                if language == "rw"
+                else "Please use the payment button to complete your application."
+            )
+            assistant_message = add_message(db, conversation_id, "assistant", text)
+            return assistant_message, "ready_for_payment", application.service.name if application else None, application.service_id if application else None
+
+        text = (
+            "Ntibyagenze neza. Nyamuneka tanga imeyili yawe nyayo (urugero: aline@example.com)."
+            if language == "rw"
+            else "That doesn't look like a valid email. Please provide a valid email address (e.g. aline@example.com)."
+        )
+        assistant_message = add_message(db, conversation_id, "assistant", text)
+        return assistant_message, "awaiting_payment_email", None, None
 
     # STATE: currently collecting a specific requirement's value
     if conversation.awaiting_requirement_id is not None:
@@ -193,6 +232,20 @@ def build_ai_reply(db: Session, conversation_id: int, message: str, service_id: 
 
         if confirmation == "yes":
             conversation.awaiting_payment_confirmation = False
+
+            existing_email = _find_collected_email(application) if application else None
+            if not existing_email:
+                conversation.awaiting_payment_email = True
+                db.add(conversation)
+                db.commit()
+                text = (
+                    "Mbere yo gukomeza kwishyura, nyamuneka tanga imeyili yawe kugira ngo tubone kukoherereza inyemezabuguzi."
+                    if language == "rw"
+                    else "Before proceeding to payment, please provide your email address so we can send your payment receipt."
+                )
+                assistant_message = add_message(db, conversation_id, "assistant", text)
+                return assistant_message, "awaiting_payment_email", application.service.name if application else None, application.service_id if application else None
+
             db.add(conversation)
             db.commit()
             text = (
@@ -359,3 +412,124 @@ def upsert_application_data(db: Session, application_id: int, requirement_id: in
 
 def get_or_create_user_by_phone(db: Session, phone_number: str | None, preferred_language: str = "en") -> User:
     return get_or_create_user(db, phone_number=phone_number, preferred_language=preferred_language)
+
+
+def generate_approval_document(db: Session, application: Application) -> GeneratedDocument:
+    """
+    Generates a simple text-based approval document for a successfully
+    paid application and saves a record of it.
+    """
+    settings = get_settings()
+    storage_root = Path(settings.storage_dir)
+    storage_root.mkdir(parents=True, exist_ok=True)
+
+    service = application.service
+    content_lines = [
+        "GOVAGENT - APPLICATION APPROVAL CONFIRMATION",
+        "=" * 45,
+        f"Reference Number: {application.reference_number}",
+        f"Service: {service.name if service else 'N/A'}",
+        f"Applicant Phone: {application.user.phone_number or 'N/A'}",
+        f"Fee Paid: {float(service.fee) if service else 0:.2f} RWF",
+        f"Status: APPROVED",
+        "",
+        "This document confirms that your application has been received,",
+        "processed, and approved. Please present this reference number",
+        "at your chosen collection office, or check your registered email",
+        "for further details and any official documents.",
+        "",
+        "Thank you for using GovAgent.",
+    ]
+    content = "\n".join(content_lines)
+    filename = f"approval_{application.reference_number}.txt"
+    file_path = storage_root / filename
+    file_path.write_text(content)
+
+    document = GeneratedDocument(application_id=application.id, file_path=str(file_path))
+    db.add(document)
+    db.commit()
+    db.refresh(document)
+    return document
+
+
+def _find_collection_location(application: Application) -> str | None:
+    """
+    Looks through the application's collected answers for anything that
+    looks like a collection district/sector/office, to reference in the
+    closing message.
+    """
+    keywords = ("collection", "processing office")
+    exclude_keywords = ("biometric",)
+    parts = []
+    for data in application.data:
+        requirement = data.requirement
+        if requirement and data.value:
+            name_lower = requirement.name.lower()
+            if any(kw in name_lower for kw in keywords) and not any(ex in name_lower for ex in exclude_keywords):
+                parts.append(data.value)
+    if parts:
+        return ", ".join(parts)
+    return None
+
+
+def build_closing_message(db: Session, application: Application, gateway_reference: str, language: str = "rw") -> str:
+    """
+    Builds a warm, grounded closing message via Gemini confirming payment,
+    referencing the approval document, and inviting feedback.
+    """
+    service = application.service
+    collection_location = _find_collection_location(application)
+
+    system_prompts = {
+        "rw": (
+            "Uri GovAgent, umufasha w'ubwenge bw'ubukorikori ufasha abaturage muri serivisi za Leta kuri Irembo. "
+            "Ubusabe bw'umukoresha bwemejwe kandi bwishyuwe neza. Andika ubutumwa bwo gusoza, bushyuha kandi "
+            "bufite umwuka mwiza, bugaragaza: (1) ibyishimo byo kwemeza ko byagenze neza, (2) nomero y'ubwishyu "
+            "n'iy'ubusabe, (3) uko azabona inyandiko ye (kureba imeyili cyangwa kujya ku biro by'aho yatoranyije), "
+            "(4) amashimwe akomeye yo gukoresha GovAgent, (5) usabe ko yatanga igitekerezo/amanota ku serivisi. "
+            "Ntukoreshe amagambo y'ikinyabwoko cyangwa make cyane; baza mu buryo bwuzuye kandi bushyuha."
+        ),
+        "en": (
+            "You are GovAgent, an AI assistant helping citizens with Rwandan government services on Irembo. "
+            "The user's application has just been successfully approved and paid for. Write a warm, complete "
+            "closing message that: (1) celebrates the successful confirmation, (2) states the payment reference "
+            "and application reference numbers, (3) tells them how to get their document (check their email, or "
+            "visit their chosen collection office), (4) thanks them warmly for using GovAgent, (5) invites them "
+            "to rate their experience and leave feedback. Be warm and complete, not terse."
+        ),
+    }
+    system_prompt = system_prompts.get(language, system_prompts["en"])
+
+    details = (
+        f"Service: {service.name if service else 'N/A'}\n"
+        f"Application reference number: {application.reference_number}\n"
+        f"Payment reference number: {gateway_reference}\n"
+        f"Fee paid: {float(service.fee) if service else 0:.2f} RWF\n"
+        f"Collection location provided by applicant: {collection_location or 'Not specified - advise them to check their email or visit their nearest sector office'}\n"
+    )
+
+    llm_client = LLMClient()
+    response = llm_client.generate_reply(details, system_prompt=system_prompt)
+
+    if response.model in ("unavailable", "error"):
+        collection_text = collection_location or (
+            "your registered email or nearest sector office" if language != "rw"
+            else "imeyili yawe cyangwa ibiro by'umurenge biri hafi yawe"
+        )
+        if language == "rw":
+            return (
+                f"Murakoze! Ubusabe bwanyu bwa {service.name if service else ''} bwemejwe kandi bwishyuwe neza.\n\n"
+                f"Nomero y'ubusabe: {application.reference_number}\n"
+                f"Nomero y'ubwishyu: {gateway_reference}\n\n"
+                f"Nyamuneka mureba {collection_text} kugira ngo mubone inyandiko zanyu.\n\n"
+                f"Murakoze gukoresha GovAgent!"
+            )
+        return (
+            f"Thank you! Your {service.name if service else 'application'} has been successfully approved and paid for.\n\n"
+            f"Application reference: {application.reference_number}\n"
+            f"Payment reference: {gateway_reference}\n\n"
+            f"Please check {collection_text} to collect your document.\n\n"
+            f"Thank you for using GovAgent!"
+        )
+
+    return response.text

@@ -45,6 +45,11 @@ app.include_router(upload.router)
 app.include_router(payment.router)
 
 
+@app.get("/config/public")
+def get_public_config():
+    return {"flutterwave_public_key": settings.flutterwave_public_key}
+
+
 @app.get("/health", response_model=HealthResponse)
 def health_check() -> HealthResponse:
     from sqlalchemy import text

@@ -761,3 +761,31 @@ body {
   .main { padding: var(--sp-3) var(--sp-3); }
   .layout { gap: var(--sp-3); }
 }
+
+/* Apply / Pay buttons */
+.apply-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: var(--blue-brand);
+  border: none;
+  border-radius: var(--r-md);
+  padding: 10px 16px;
+  margin-top: 8px;
+  font-size: var(--size-sm);
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  transition: opacity 0.14s, transform 0.1s;
+}
+.apply-btn:hover {
+  opacity: 0.9;
+}
+.apply-btn:active {
+  transform: scale(0.98);
+}
+.apply-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

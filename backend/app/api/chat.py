@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.models.application import Conversation
+from app.models.requirement import Requirement
 from app.models.user import User
 from app.schemas import ChatReply, ChatRequest, ConversationCreate, ConversationRead, MessageCreate, MessageRead
 from app.services.flow_manager import add_message, build_ai_reply, create_conversation, get_or_create_user_by_phone
@@ -35,6 +36,18 @@ def chat_with_ai(payload: ChatRequest, db: Session = Depends(get_db)):
         db, conversation.id, payload.message, payload.service_id,
         language=payload.preferred_language,
     )
+
+    application_id = conversation.application.id if conversation.application else None
+    awaiting_requirement_id = conversation.awaiting_requirement_id
+    needs_upload = False
+    if awaiting_requirement_id is not None:
+        requirement = db.get(Requirement, awaiting_requirement_id)
+        needs_upload = bool(requirement and requirement.needs_upload)
+
+    fee = None
+    if conversation.application and conversation.application.service:
+        fee = float(conversation.application.service.fee)
+
     return ChatReply(
         conversation_id=conversation.id,
         user_id=user.id,
@@ -43,6 +56,10 @@ def chat_with_ai(payload: ChatRequest, db: Session = Depends(get_db)):
         assistant_message=assistant_message.content,
         assistant_message_id=assistant_message.id,
         service_id=service_id,
+        application_id=application_id,
+        awaiting_requirement_id=awaiting_requirement_id,
+        awaiting_requirement_needs_upload=needs_upload,
+        fee=fee,
     )
 
 

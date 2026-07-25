@@ -87,6 +87,10 @@ class ChatReply(BaseModel):
     assistant_message: str
     assistant_message_id: int
     service_id: int | None = None
+    application_id: int | None = None
+    awaiting_requirement_id: int | None = None
+    awaiting_requirement_needs_upload: bool = False
+    fee: float | None = None
 
 
 class ConversationRead(ORMModel):
@@ -137,6 +141,7 @@ class ApplicationRead(ORMModel):
     reference_number: str
     created_at: datetime
     updated_at: datetime
+    payment_email: str | None = None
 
 
 class ApplicationDetailRead(ApplicationRead):
@@ -163,6 +168,7 @@ class PaymentCreate(BaseModel):
     payment_method: str
     amount: float
     gateway_reference: str | None = None
+    language: str | None = None
 
 
 class PaymentRead(ORMModel):
@@ -173,6 +179,8 @@ class PaymentRead(ORMModel):
     amount: float
     status: str
     created_at: datetime
+    closing_message: str | None = None
+    document_id: int | None = None
 
 
 class GeneratedDocumentRead(ORMModel):
@@ -180,3 +188,9 @@ class GeneratedDocumentRead(ORMModel):
     application_id: int
     file_path: str
     generated_at: datetime
+
+
+class FlutterwaveVerifyRequest(BaseModel):
+    transaction_id: str
+    tx_ref: str
+    language: str | None = None

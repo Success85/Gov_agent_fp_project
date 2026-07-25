@@ -17,6 +17,7 @@ class Application(Base):
     conversation_id: Mapped[int | None] = mapped_column(ForeignKey("conversations.id", ondelete="SET NULL"), unique=True, nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="draft")
     reference_number: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    payment_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

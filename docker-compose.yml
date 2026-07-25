@@ -31,6 +31,8 @@ services:
       CORS_ORIGINS: '["*"]'
       STORAGE_DIR: /app/storage
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      FLUTTERWAVE_PUBLIC_KEY: ${FLUTTERWAVE_PUBLIC_KEY}
+      FLUTTERWAVE_SECRET_KEY: ${FLUTTERWAVE_SECRET_KEY}
     volumes:
       - ./backend:/app
       - ./storage:/app/storage
