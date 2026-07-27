@@ -47,3 +47,4 @@ Werkzeug==3.1.8
 pydantic-settings==2.7.0
 python-multipart==0.0.20
 google-genai
+fpdf2

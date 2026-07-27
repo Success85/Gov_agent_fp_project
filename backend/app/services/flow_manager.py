@@ -135,7 +135,8 @@ def _application_summary_text(db: Session, application: Application, language: s
         else "\n\nReply 'yes' to proceed to payment, or 'no' to cancel."
     )
 
-    lines = [f"**{header}: {service.name}**", ""]
+    name_label = "Amazina" if language == "rw" else "Full Name"
+    lines = [f"**{header}: {service.name}**", f"{name_label}: {application.applicant_name or 'N/A'}", ""]
     for requirement in requirements:
         label = requirement.name_rw if language == "rw" else requirement.name
         data = next((d for d in application.data if d.requirement_id == requirement.id), None)
@@ -168,6 +169,41 @@ def build_ai_reply(db: Session, conversation_id: int, message: str, service_id: 
     conversation = db.get(Conversation, conversation_id)
     if conversation is None:
         raise ValueError("Conversation not found")
+
+    # STATE: collecting the applicant's full name (first step after confirming)
+    if conversation.awaiting_applicant_name:
+        application = conversation.application
+        candidate = message.strip()
+        if application is not None and len(candidate) >= 2 and any(c.isalpha() for c in candidate):
+            application.applicant_name = candidate
+            conversation.awaiting_applicant_name = False
+            db.add(application)
+            db.add(conversation)
+            db.commit()
+            db.refresh(application)
+
+            next_requirement = get_next_missing_requirement(db, application)
+            if next_requirement is not None:
+                conversation.awaiting_requirement_id = next_requirement.id
+                db.add(conversation)
+                db.commit()
+                text = _requirement_prompt(next_requirement, language)
+            else:
+                conversation.awaiting_payment_confirmation = True
+                db.add(conversation)
+                db.commit()
+                text = _application_summary_text(db, application, language)
+
+            assistant_message = add_message(db, conversation_id, "assistant", text)
+            return assistant_message, "collecting_requirements", application.service.name if application.service else None, application.service_id
+
+        text = (
+            "Nyamuneka tanga amazina yawe yuzuye (urugero: Aline Uwase)."
+            if language == "rw"
+            else "Please provide your full name (e.g. Aline Uwase)."
+        )
+        assistant_message = add_message(db, conversation_id, "assistant", text)
+        return assistant_message, "awaiting_applicant_name", None, None
 
     # STATE: collecting the payment email (final step before payment)
     if conversation.awaiting_payment_email:
@@ -276,19 +312,14 @@ def build_ai_reply(db: Session, conversation_id: int, message: str, service_id: 
         if confirmation == "yes":
             conversation.pending_service_id = None
             application = start_application(db, conversation.user_id, service.id, conversation_id)
-            next_requirement = get_next_missing_requirement(db, application)
-
-            if next_requirement is not None:
-                conversation.awaiting_requirement_id = next_requirement.id
-                db.add(conversation)
-                db.commit()
-                text = _requirement_prompt(next_requirement, language)
-            else:
-                conversation.awaiting_payment_confirmation = True
-                db.add(conversation)
-                db.commit()
-                text = _application_summary_text(db, application, language)
-
+            conversation.awaiting_applicant_name = True
+            db.add(conversation)
+            db.commit()
+            text = (
+                "Mbere yo gukomeza, nyamuneka tanga amazina yawe yuzuye."
+                if language == "rw"
+                else "Before we continue, please provide your full name."
+            )
             assistant_message = add_message(db, conversation_id, "assistant", text)
             return assistant_message, "collecting_requirements", service.name, service.id
 
@@ -416,34 +447,90 @@ def get_or_create_user_by_phone(db: Session, phone_number: str | None, preferred
 
 def generate_approval_document(db: Session, application: Application) -> GeneratedDocument:
     """
-    Generates a simple text-based approval document for a successfully
-    paid application and saves a record of it.
+    Generates a real, printable PDF approval document for a successfully
+    paid application, including all collected requirement answers, and
+    saves a record of it.
     """
+    from fpdf import FPDF
+
     settings = get_settings()
     storage_root = Path(settings.storage_dir)
     storage_root.mkdir(parents=True, exist_ok=True)
 
     service = application.service
-    content_lines = [
-        "GOVAGENT - APPLICATION APPROVAL CONFIRMATION",
-        "=" * 45,
-        f"Reference Number: {application.reference_number}",
-        f"Service: {service.name if service else 'N/A'}",
-        f"Applicant Phone: {application.user.phone_number or 'N/A'}",
-        f"Fee Paid: {float(service.fee) if service else 0:.2f} RWF",
-        f"Status: APPROVED",
-        "",
-        "This document confirms that your application has been received,",
-        "processed, and approved. Please present this reference number",
-        "at your chosen collection office, or check your registered email",
-        "for further details and any official documents.",
-        "",
-        "Thank you for using GovAgent.",
-    ]
-    content = "\n".join(content_lines)
-    filename = f"approval_{application.reference_number}.txt"
+    requirements = (
+        db.query(Requirement)
+        .filter(Requirement.service_id == application.service_id)
+        .order_by(Requirement.id.asc())
+        .all()
+    )
+
+    pdf = FPDF()
+    pdf.add_page()
+
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_text_color(0, 87, 183)
+    pdf.cell(0, 12, "GovAgent", ln=True, align="C")
+
+    pdf.set_font("Helvetica", "", 11)
+    pdf.set_text_color(80, 80, 80)
+    pdf.cell(0, 8, "Official Application Approval Confirmation", ln=True, align="C")
+    pdf.ln(6)
+
+    pdf.set_draw_color(200, 200, 200)
+    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+    pdf.ln(8)
+
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.cell(0, 8, service.name if service else "Government Service", ln=True)
+    pdf.ln(2)
+
+    pdf.set_font("Helvetica", "", 11)
+
+    def field(label, value):
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.write(8, f"{label}: ")
+        pdf.set_font("Helvetica", "", 11)
+        pdf.write(8, str(value) if value else "N/A")
+        pdf.ln(9)
+
+    field("Applicant Name", application.applicant_name)
+    field("Reference Number", application.reference_number)
+    field("Status", "APPROVED")
+    field("Fee Paid", f"{float(service.fee) if service else 0:.2f} RWF")
+    pdf.ln(4)
+
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 8, "Application Details", ln=True)
+    pdf.set_draw_color(220, 220, 220)
+    pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+    pdf.ln(3)
+
+    for requirement in requirements:
+        data = next((d for d in application.data if d.requirement_id == requirement.id), None)
+        upload = next((u for u in application.uploads if u.requirement_id == requirement.id), None)
+        if data and data.value:
+            value = data.value
+        elif upload:
+            value = upload.file_name
+        else:
+            value = "N/A"
+        field(requirement.name, value)
+
+    pdf.ln(6)
+    pdf.set_font("Helvetica", "I", 10)
+    pdf.set_text_color(100, 100, 100)
+    pdf.multi_cell(
+        0, 6,
+        "This document confirms that your application has been received, processed, "
+        "and approved. Present this reference number at your chosen collection office, "
+        "or check your registered email for further details."
+    )
+
+    filename = f"approval_{application.reference_number}.pdf"
     file_path = storage_root / filename
-    file_path.write_text(content)
+    pdf.output(str(file_path))
 
     document = GeneratedDocument(application_id=application.id, file_path=str(file_path))
     db.add(document)
@@ -490,7 +577,7 @@ def build_closing_message(db: Session, application: Application, gateway_referen
             "Ntukoreshe amagambo y'ikinyabwoko cyangwa make cyane; baza mu buryo bwuzuye kandi bushyuha."
         ),
         "en": (
-            "You are GovAgent, an AI assistant helping citizens with Rwandan government services on Irembo. "
+            "You are GovAgent, an AI assistant helping citizens with Rwandan government services on Irembo. Address the applicant by their name if provided. "
             "The user's application has just been successfully approved and paid for. Write a warm, complete "
             "closing message that: (1) celebrates the successful confirmation, (2) states the payment reference "
             "and application reference numbers, (3) tells them how to get their document (check their email, or "
@@ -501,6 +588,7 @@ def build_closing_message(db: Session, application: Application, gateway_referen
     system_prompt = system_prompts.get(language, system_prompts["en"])
 
     details = (
+        f"Applicant full name: {application.applicant_name or 'Applicant'}\n"
         f"Service: {service.name if service else 'N/A'}\n"
         f"Application reference number: {application.reference_number}\n"
         f"Payment reference number: {gateway_reference}\n"

@@ -6,7 +6,8 @@ from app.models.application import Application, PaymentTransaction
 from app.schemas import PaymentCreate, PaymentRead, FlutterwaveVerifyRequest
 from app.services.payment import simulate_momo_payment
 from app.services.flutterwave import verify_transaction, FlutterwaveVerificationError
-from app.services.flow_manager import generate_approval_document, build_closing_message, add_message
+from app.services.flow_manager import generate_approval_document, build_closing_message, add_message, _find_collection_location
+from app.services.email_service import send_approval_email
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -53,6 +54,20 @@ def create_payment(application_id: int, payload: PaymentCreate, db: Session = De
 
         if application.conversation_id:
             add_message(db, application.conversation_id, "assistant", closing_message)
+
+            if application.payment_email:
+                send_approval_email(
+                    to_email=application.payment_email,
+                    applicant_name=application.applicant_name,
+                    service_name=application.service.name if application.service else "Government Service",
+                    reference_number=application.reference_number,
+                    gateway_reference=transaction.gateway_reference,
+                    fee=float(transaction.amount),
+                    collection_location=_find_collection_location(application),
+                    document_path=document.file_path,
+                    closing_message=closing_message,
+                    language=language,
+                )
     else:
         db.commit()
         db.refresh(transaction)
@@ -123,6 +138,20 @@ def verify_flutterwave_payment(application_id: int, payload: FlutterwaveVerifyRe
 
         if application.conversation_id:
             add_message(db, application.conversation_id, "assistant", closing_message)
+
+            if application.payment_email:
+                send_approval_email(
+                    to_email=application.payment_email,
+                    applicant_name=application.applicant_name,
+                    service_name=application.service.name if application.service else "Government Service",
+                    reference_number=application.reference_number,
+                    gateway_reference=transaction.gateway_reference,
+                    fee=float(transaction.amount),
+                    collection_location=_find_collection_location(application),
+                    document_path=document.file_path,
+                    closing_message=closing_message,
+                    language=language,
+                )
     else:
         db.commit()
         db.refresh(transaction)

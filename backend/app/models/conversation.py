@@ -18,6 +18,7 @@ class Conversation(Base):
     awaiting_requirement_id = Column(Integer, ForeignKey("requirements.id"), nullable=True)
     awaiting_payment_confirmation = Column(Boolean, nullable=False, default=False)
     awaiting_payment_email = Column(Boolean, nullable=False, default=False)
+    awaiting_applicant_name = Column(Boolean, nullable=False, default=False)
 
     # Relationships
     user = relationship("User", back_populates="conversations")

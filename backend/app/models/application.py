@@ -18,6 +18,7 @@ class Application(Base):
     status: Mapped[str] = mapped_column(String(32), default="draft")
     reference_number: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     payment_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    applicant_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
