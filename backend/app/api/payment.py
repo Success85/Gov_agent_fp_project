@@ -3,8 +3,11 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.models.application import Application, PaymentTransaction
-from app.schemas import PaymentCreate, PaymentRead
+from app.schemas import PaymentCreate, PaymentRead, FlutterwaveVerifyRequest
 from app.services.payment import simulate_momo_payment
+from app.services.flutterwave import verify_transaction, FlutterwaveVerificationError
+from app.services.flow_manager import generate_approval_document, build_closing_message, add_message, _find_collection_location
+from app.services.email_service import send_approval_email
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -32,6 +35,135 @@ def create_payment(application_id: int, payload: PaymentCreate, db: Session = De
         status=simulated.status,
     )
     db.add(transaction)
-    db.commit()
-    db.refresh(transaction)
-    return transaction
+
+    closing_message = None
+    document_id = None
+
+    if simulated.status == "success":
+        application.status = "submitted"
+        db.add(application)
+        db.commit()
+        db.refresh(transaction)
+        db.refresh(application)
+
+        document = generate_approval_document(db, application)
+        document_id = document.id
+
+        language = payload.language or (application.user.preferred_language if application.user else "en")
+        closing_message = build_closing_message(db, application, transaction.gateway_reference, language=language)
+
+        if application.conversation_id:
+            add_message(db, application.conversation_id, "assistant", closing_message)
+
+            if application.payment_email:
+                send_approval_email(
+                    to_email=application.payment_email,
+                    applicant_name=application.applicant_name,
+                    service_name=application.service.name if application.service else "Government Service",
+                    reference_number=application.reference_number,
+                    gateway_reference=transaction.gateway_reference,
+                    fee=float(transaction.amount),
+                    collection_location=_find_collection_location(application),
+                    document_path=document.file_path,
+                    closing_message=closing_message,
+                    language=language,
+                )
+    else:
+        db.commit()
+        db.refresh(transaction)
+
+    return PaymentRead(
+        id=transaction.id,
+        application_id=transaction.application_id,
+        payment_method=transaction.payment_method,
+        gateway_reference=transaction.gateway_reference,
+        amount=float(transaction.amount),
+        status=transaction.status,
+        created_at=transaction.created_at,
+        closing_message=closing_message,
+        document_id=document_id,
+    )
+
+
+@router.post("/{application_id}/verify-flutterwave", response_model=PaymentRead, status_code=status.HTTP_201_CREATED)
+def verify_flutterwave_payment(application_id: int, payload: FlutterwaveVerifyRequest, db: Session = Depends(get_db)):
+    application = db.get(Application, application_id)
+    if application is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+    if application.service is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Application has no linked service")
+
+    try:
+        data = verify_transaction(payload.transaction_id)
+    except FlutterwaveVerificationError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Could not verify payment: {exc}")
+
+    expected_amount = float(application.service.fee)
+    verified_status = data.get("status")
+    verified_amount = float(data.get("amount", 0) or 0)
+    verified_currency = data.get("currency")
+    verified_tx_ref = data.get("tx_ref")
+
+    is_valid = (
+        verified_status == "successful"
+        and verified_tx_ref == payload.tx_ref
+        and verified_currency == "RWF"
+        and abs(verified_amount - expected_amount) < 0.01
+    )
+
+    transaction = PaymentTransaction(
+        application_id=application_id,
+        payment_method="flutterwave",
+        gateway_reference=data.get("flw_ref") or payload.tx_ref,
+        amount=verified_amount or expected_amount,
+        status="success" if is_valid else "failed",
+    )
+    db.add(transaction)
+
+    closing_message = None
+    document_id = None
+
+    if is_valid:
+        application.status = "submitted"
+        db.add(application)
+        db.commit()
+        db.refresh(transaction)
+        db.refresh(application)
+
+        document = generate_approval_document(db, application)
+        document_id = document.id
+
+        language = payload.language or (application.user.preferred_language if application.user else "en")
+        closing_message = build_closing_message(db, application, transaction.gateway_reference, language=language)
+
+        if application.conversation_id:
+            add_message(db, application.conversation_id, "assistant", closing_message)
+
+            if application.payment_email:
+                send_approval_email(
+                    to_email=application.payment_email,
+                    applicant_name=application.applicant_name,
+                    service_name=application.service.name if application.service else "Government Service",
+                    reference_number=application.reference_number,
+                    gateway_reference=transaction.gateway_reference,
+                    fee=float(transaction.amount),
+                    collection_location=_find_collection_location(application),
+                    document_path=document.file_path,
+                    closing_message=closing_message,
+                    language=language,
+                )
+    else:
+        db.commit()
+        db.refresh(transaction)
+
+    return PaymentRead(
+        id=transaction.id,
+        application_id=transaction.application_id,
+        payment_method=transaction.payment_method,
+        gateway_reference=transaction.gateway_reference,
+        amount=float(transaction.amount),
+        status=transaction.status,
+        created_at=transaction.created_at,
+        closing_message=closing_message,
+        document_id=document_id,
+    )

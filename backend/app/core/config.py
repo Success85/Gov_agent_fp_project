@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     llm_model_name: str = "mock-kinyarwanda-assistant"
     llm_api_url: str | None = None
 
+    flutterwave_public_key: str | None = None
+    flutterwave_secret_key: str | None = None
+    gmail_address: str | None = None
+    gmail_app_password: str | None = None
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 

@@ -43,7 +43,7 @@ def check_db_connection():
         return False
 
 
-def create_tables():
+def init_db():
     from app.models.user import User
     from app.models.service import Service
     from app.models.requirement import Requirement
@@ -57,4 +57,4 @@ def create_tables():
 
 
 if __name__ == "__main__":
-    create_tables()
+    init_db()

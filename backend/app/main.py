@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api import application, chat, payment, services, upload, users
 from app.core.config import get_settings
@@ -28,17 +29,12 @@ app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 logger.info("Starting Gov Agent API server")
-
-
-@app.get("/")
-def root():
-    return RedirectResponse(url="/docs")
 
 
 app.include_router(chat.router)
@@ -47,6 +43,11 @@ app.include_router(services.router)
 app.include_router(application.router)
 app.include_router(upload.router)
 app.include_router(payment.router)
+
+
+@app.get("/config/public")
+def get_public_config():
+    return {"flutterwave_public_key": settings.flutterwave_public_key}
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -61,3 +62,6 @@ def health_check() -> HealthResponse:
     except Exception:
         db_status = "error"
     return HealthResponse(status="ok", database=db_status)
+
+
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

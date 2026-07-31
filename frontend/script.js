@@ -1,6 +1,6 @@
 'use strict';
 const CONFIG = {
-  BACKEND_URL: 'http://127.0.0.1:8000',
+  BACKEND_URL: '',
   GUEST_USER_ID: 1,
   USE_BACKEND_CHAT: true,
 };
@@ -8,7 +8,7 @@ const CONFIG = {
 const KB = {
   national_id: {
     id: 'national_id',
-    backendName: 'National ID',
+    backendName: 'Application for National ID',
     backendId: null,
     name:     { en: 'National ID Application',         rw: 'Gusaba Indangamuntu',             fr: 'Demande de carte d\'identité' },
     category: { en: 'Identification',                  rw: 'Imyambabanire',                   fr: 'Identification' },
@@ -47,7 +47,7 @@ const KB = {
   },
   health_insurance: {
     id: 'health_insurance',
-    backendName: 'Health Insurance',
+    backendName: 'Mutuelle (Health Insurance) Renewal',
     backendId: null,
     name:     { en: 'Mutuelle (Health Insurance) Renewal', rw: 'Kwishyura Ubwishingizi bw\'Ubuzima', fr: 'Renouvellement de la mutuelle de santé' },
     category: { en: 'Health',                              rw: 'Ubuzima',                             fr: 'Santé' },
@@ -85,7 +85,7 @@ const KB = {
   },
   driving_license: {
     id: 'driving_license',
-    backendName: 'Driving License',
+    backendName: 'Driving License Application',
     backendId: null,
     name:     { en: 'Driving License Application',    rw: 'Gusaba Uruhushya rwo Gutwara Imodoka', fr: 'Demande de permis de conduire' },
     category: { en: 'Transport',                      rw: 'Ubutwererane',                         fr: 'Transport' },
@@ -244,7 +244,7 @@ function retrieveServices(query, lang) {
   return scored.sort((a, b) => b.score - a.score).slice(0, 2).map(s => s.svc);
 }
 
-/* Local Response generation */
+/* Local Response */
 const TEMPLATES = {
   intro:      { rw: n => `Ngufasha gusaba **${n}** kuri Irembo. Dore amakuru akenewe:`,     en: n => `I can help you with **${n}** on Irembo. Here is what you need:`,              fr: n => `Je peux vous aider pour **${n}** sur Irembo. Voici ce qu'il vous faut :` },
   reqHeader:  { rw: () => 'Ibisabwa:',                                                       en: () => 'Requirements:',                                                              fr: () => 'Pièces requises :' },
@@ -264,7 +264,7 @@ function buildLocalResponse(matches, lang) {
   }
   const svc = matches[0];
   const opt = TEMPLATES.optional[lang];
-  return [
+  const lines = [
     TEMPLATES.intro[lang](svc.name[lang]), '',
     TEMPLATES.reqHeader[lang](),
     ...svc.requirements.map(r => `  - ${r[lang] || r.en}${r.mandatory ? '' : opt}`),
@@ -272,7 +272,236 @@ function buildLocalResponse(matches, lang) {
     ...svc.steps.map((s, i) => `  ${i + 1}. ${s[lang] || s.en}`),
     '', TEMPLATES.fee[lang](svc.fee_rwf),
     '', TEMPLATES.closing[lang](),
-  ].join('\n');
+  ];
+  return lines.join('\n');
+}
+
+/* API */
+const API = {
+  async _fetch(method, path, body = null) {
+    const url = `${CONFIG.BACKEND_URL}${path}`;
+    const opts = {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+    };
+    if (body !== null) opts.body = JSON.stringify(body);
+    const res = await fetch(url, opts);
+    if (!res.ok) {
+      console.warn(`[API] ${method} ${path} → ${res.status}`);
+      return null;
+    }
+    return await res.json();
+  },
+
+  async _fetchMultipart(path, formData) {
+    const url = `${CONFIG.BACKEND_URL}${path}`;
+    const res = await fetch(url, { method: 'POST', body: formData });
+    if (!res.ok) {
+      console.warn(`[API] POST ${path} → ${res.status}`);
+      return null;
+    }
+    return res.json();
+  },
+
+  async checkHealth() {
+    try {
+      const data = await this._fetch('GET', '/health');
+      return data?.status === 'ok';
+    } catch {
+      return false;
+    }
+  },
+
+/* Users */
+  async createUser(phoneNumber = null, preferredLanguage = 'rw') {  
+  try {
+    return await this._fetch('POST', '/users', {
+        phone_number:       phoneNumber,
+        preferred_language: preferredLanguage,
+      });
+    } catch (err) {
+      console.error('[API] createUser failed:', err);
+      return null;
+    }
+  },
+  async getUser(userId) {
+    try {
+      return await this._fetch('GET', `/users/${userId}`);
+    } catch (err) {
+      return null;
+    }
+  },
+  async lookupUser(phonenumber) {
+    try {
+      return await this._fetch('POST', '/users/lookup', {phonenumber: phoneNumber});
+    } catch (err) {
+      console.error('[API] lookupUser failed:', err);
+      return null;
+    }
+  },
+
+/* Services */
+  async listServices() {
+    try {
+      return await this._fetch('GET', '/services');
+    } catch (err) {
+      console.error('[API] listServices failed:', err);
+      return null;
+    }
+  },
+  async getService(serviceId) {
+    try {
+      return await this._fetch('GET', `/services/${serviceId}`);
+    } catch (err) {
+      console.error('[API] getService failed:', err);
+      return null;
+    }
+  },
+
+/* Chat */
+  async startConversation(userId) {
+    try {
+      return await this._fetch('POST', '/chat/start', { user_id: userId });
+    } catch (err) {
+      console.error('[API] startCoversation failed:', err);
+      return null;
+    }
+  },
+  async saveMessage(conversationId, role, content, language = currentLang) {
+    try {
+      return await this._fetch('POST',`/chat/${conversationId}/messages`,{ role, content, language });
+    } catch (err) {
+      console.error('[API] saveMessage failed:', err);
+      return null;
+    }
+  },
+  async chatWithAI(message, userId, conversationId = null, language = currentLang) {
+    try {
+      return await this._fetch('POST', '/chat', {
+        message,
+        user_id: userId,
+        conversation_id: conversationId,
+        preferred_language: language,
+      });
+    } catch (err) {
+      console.error('[API] chatWithAI failed:', err);
+      return null;
+    }
+  },
+
+/* Application */
+  async startApplication(userId, serviceId, conversationId = null) {
+    try {
+      return await this._fetch('POST', '/applications/start', {
+        user_id: userId,
+        service_id: serviceId,
+        conversation_id: conversationId,
+      });
+    } catch (err) {
+      console.error('[API] startApplicationFlow failed:', err);
+      return null;
+    }
+  },
+  async createApplication(userId, serviceId, conversationId) { 
+    try {
+      return await this._fetch('POST', '/applications', {
+        user_id: userId,
+        service_id: serviceId,
+        conversation_id: conversationId ?? null,
+      });
+    } catch (err) {
+      console.error('[API] createApplication failed:', err);
+      return null;
+    }
+  },
+
+  async getApplication(applicationId) {
+    try {
+      return await this._fetch('GET', `/applications/${applicationId}`);
+    } catch (err) {
+      console.error('[API] getApplication failed:', err);
+      return null;
+    }
+  },
+  async getApplicationDetail(applicationId) {
+    try {
+      return await this._fetch('GET', `/applications/${applicationId}/detail`);
+    } catch (err) {
+      console.error('[API] getApplication failed:', err);
+      return null;
+    }
+  },  
+
+  async saveApplicationData(applicationId, requirementId, value) {
+    try {
+      return await this._fetch('PUT',`/applications/${applicationId}/data/${requirementId}`,
+      { requirement_id: requirementId, value });
+    } catch (err) {
+      console.error('[API] saveApplicationData failed:', err);
+      return null;
+    }
+  },
+
+  /* Payment */
+  async createPayment(applicationId, amount, gatewayReference = null) {
+    try {
+      return await this._fetch('POST', `/payments/${applicationId}`, {payment_method: 'mobile_money',amount,gateway_reference: gatewayReference,language: currentLang,});
+    } catch (err) {
+      console.error('[API] createPayment failed:', err);
+      return null;
+    }
+  },
+
+  async getPublicConfig() {
+    try {
+      return await this._fetch('GET', '/config/public');
+    } catch (err) {
+      console.error('[API] getPublicConfig failed:', err);
+      return null;
+    }
+  },
+  async verifyFlutterwavePayment(applicationId, transactionId, txRef) {
+    try {
+      return await this._fetch('POST', `/payments/${applicationId}/verify-flutterwave`, {
+        transaction_id: String(transactionId),
+        tx_ref: txRef,
+        language: currentLang,
+      });
+    } catch (err) {
+      console.error('[API] verifyFlutterwavePayment failed:', err);
+      return null;
+    }
+  },
+  /* Document upload */
+  async uploadDocument(applicationId, file, requirementId = null) {
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      if (requirementId !== null) fd.append('requirement_id', String(requirementId));
+      return await this._fetchMultipart(`/uploads/${applicationId}`, fd);
+    } catch (err) {
+      console.error('[API] uploadDocument failed:', err);
+      return null;
+    }
+  },
+};
+
+/* Load Service */
+async function loadServicesFromBackend() {
+  const services = await API.listServices();
+  if (!Array.isArray(services)) return;
+  services.forEach(backendSvc => {
+    const localEntry = Object.values(KB).find(
+      k => k.backendName.toLowerCase() === backendSvc.name.toLowerCase()
+    );
+    if (localEntry) {
+      localEntry.backendId = backendSvc.id;
+      if (backendSvc.fee != null) {
+        localEntry.fee_rwf = Number(backendSvc.fee);
+      }
+    }
+  });
+  console.log('[KB] backendId values synced from GET /services');
 }
 
 /* Session */
@@ -286,10 +515,19 @@ function buildLocalResponse(matches, lang) {
   savePhone(phone) { localStorage.setItem(this.STORAGE_KEY_PHONE, phone); },
 
   conversationId: null,
+  applicationId: null,
+  awaitingRequirementId: null,
+  awaitingRequirementUpload: false,
+  fee: null,
 
   async initUser() {
     const existingId = this.getUserId();
-    if (existingId) return existingId;
+    if (existingId) {
+      const verified = await API.getUser(existingId);
+      if (verified?.id) return existingId;
+      // Stale cached ID (e.g. after a database reseed) - clear it and create fresh
+      localStorage.removeItem(this.STORAGE_KEY_USER);
+    }
     const phone = this.getPhone();
     try {
       if (phone) {
@@ -300,231 +538,30 @@ function buildLocalResponse(matches, lang) {
         }
       }
 
-    const created = await API.createUser(phone, currentLang);
+    const created = await API.createUser(null, currentLang);
       if (created?.id) {
         this.saveUserId(created.id);
         return created.id;
       }
     } catch (err) {
-        console.warn('[SESSION] initUser failed, using fallback:', err);
+        console.warn('[SESSION] initUser failed, falling back to GUEST_USER_ID:', err);
     }
     this.saveUserId(CONFIG.GUEST_USER_ID);
     return CONFIG.GUEST_USER_ID;
   },
-};
-
-/* API */
-const API = {
-  async _fetch(method, path, body = null) {
-    const url = `${CONFIG.BACKEND_URL}${path}`;
-    const opts = {method,headers: { 'Content-Type': 'application/json' },};
-    if (body !== null) opts.body = JSON.stringify(body);
-    try {  
-      const res = await fetch(url, opts);
-      if (!res.ok) {console.warn(`[API] ${method} ${path} → ${res.status}`); return null; }
-      return res.json();
-    } catch { return null; }
-  },
-
-  async _fetchMultipart(path, formData) {
-    try {
-      const res = await fetch(`${CONFIG.BACKEND_URL}${path}`, { method: 'POST', body: formData });
-      if (!res.ok) { console.warn(`[API] POST ${path} → ${res.status}`); return null;}
-      return res.json();
-    } catch { return null; }
-  },
-
-  async checkHealth() {
-    try {
-      const data = await this._fetch('GET', '/health');
-      return data?.status === 'ok';
-    } catch { return false; }
-  },
-
-  async createUser(phoneNumber = null, preferredLanguage = 'rw') {  
-    return this._fetch('POST', '/users', {phone_number:phoneNumber,preferred_language: preferredLanguage,});
-  },
-
-  async lookupUser(phonenumber) {
-    return this._fetch('POST', '/users/lookup', {phonenumber: phoneNumber});
-  },
-
-  async listServices() {
-    return this._fetch('GET', '/services');
-  },
-
-  async getService(serviceId) {
-    return this._fetch('GET', `/services/${serviceId}`);
-  },
-
-  async chatWithAI(message, userId, conversationId, preferredLanguage = 'en') {
-    return this._fetch('POST', '/chat', {
-      message,
-      user_id:            userId,
-      conversation_id:    conversationId ?? null,
-      preferred_language: preferredLanguage,
-    });
-  },
-
-  async startConversation(userId) {
-    return this._fetch('POST', '/chat/start', { user_id: userId });
-  },
-
-  async saveMessage(conversationId, role, content) {
-    return this._fetch('POST',`/chat/${conversationId}/messages`,{ role, content });
-  },
-
-/* Application */
-  async startApplicationFlow(userId, serviceId, conversationId = null) {
-    return this._fetch('POST', '/applications/start', {
-      user_id: userId,
-      service_id: serviceId,
-      conversation_id: conversationId,
-    });
-  },
-
-  async getApplicationDetail(applicationId) {
-      return await this._fetch('GET', `/applications/${applicationId}/detail`);
-  },  
-
-  async uploadDocument(applicationId, file, requirementId = null) {
-    const fd = new FormData();
-    fd.append('file', file);
-    if (requirementId !== null) fd.append('requirement_id', String(requirementId));
-    return this._fetchMultipart(`/uploads/${applicationId}`, fd);
-  },
-
-  async createPayment(applicationId, amount) {
-    return this._fetch('POST', `/payments/${applicationId}`, {payment_method: 'mobile_money',amount});
+  updateSessionDisplay() {
+    const userEl = document.getElementById('session-user-id');
+    const convEl = document.getElementById('session-conv-id');
+    if (userEl) userEl.textContent = `${UI[currentLang].sessionLabel} #${this.getUserId() ?? '—'}`;
+    if (convEl) convEl.textContent = this.conversationId
+      ? `${UI[currentLang].convLabel} #${this.conversationId}`
+      : '';
   },
 };
-
-/* The upload panel */
-let activeApplicationId = null;
-let activeServiceBackendId = null;
-
-function buildUploadFields(requirements) {
-  const ui = UI[currentLang];
-  uploadFieldsEl.innerHTML = '';
-  requirements.forEach((req, i) => {
-    const field = document.createElement('div');
-    field.className = 'upload-field';
-
-    const label = document.createElement('label');
-    label.className   = 'upload-field-label';
-    label.htmlFor     = `upload-file-${i}`;
-    label.textContent = req.name || req.description || `Document ${i + 1}`;
-    if (!req.mandatory) {
-      const opt    = document.createElement('span');
-      opt.className    = 'req-optional';
-      opt.textContent  = ` ${ui.uploadOptional}`;
-      label.appendChild(opt);
-    }
-
-    const input = document.createElement('input');
-    input.type      = 'file';
-    input.id        = `upload-file-${i}`;
-    input.className = 'upload-field-input';
-    input.accept    = '.pdf,.jpg,.jpeg,.png';
-    input.dataset.requirementId = req.id ?? '';
-    input.dataset.mandatory     = req.mandatory ? '1' : '0';
-    input.addEventListener('change', () => {
-      input.classList.toggle('has-file', input.files.length > 0);
-    });
-
-    field.appendChild(label);
-    field.appendChild(input);
-    uploadFieldsEl.appendChild(field);
-  });
-}
-
-async function startApplication() {
-  if (!backendOnline) {
-    appendMessage('assistant', UI[currentLang].noMatch);
-    return;
-  }
-
-  const ui      = UI[currentLang];
-  const userId  = SESSION.getUserId() ?? CONFIG.GUEST_USER_ID;
-  applyBtn.disabled = true;
-  applyBtn.textContent = '…';
-
-  try {
-    const app = await API.startApplicationFlow(
-      userId,
-      activeServiceBackendId,
-      SESSION.conversationId
-    );
-    if (!app?.id) throw new Error('No application returned');
-    activeApplicationId = app.id;
-    const svcDetail = await API.getService(activeServiceBackendId);
-    const uploadReqs = (svcDetail?.requirements ?? []).filter(r => r.needs_upload);
-
-    if (uploadReqs.length === 0) {
-      appendMessage('assistant', ui.appStarted + app.reference_number);
-      uploadPanel.hidden = true;
-    } else {
-      uploadHeadingEl.textContent  = ui.uploadHeading;
-      uploadIntroEl.textContent    = ui.uploadIntro;
-      uploadSubmitBtn.textContent  = ui.uploadSubmit;
-      uploadCancelBtn.textContent  = ui.uploadCancel;
-      uploadRefEl.textContent      = app.reference_number;
-      uploadStatusEl.textContent   = '';
-      uploadStatusEl.className     = 'upload-status';
-      buildUploadFields(uploadReqs);
-      uploadPanel.hidden = false;
-      uploadPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      appendMessage('assistant', ui.appStarted + app.reference_number);
-    }
-  } catch (err) {
-    console.error('[startApplication]', err);
-    appendMessage('assistant', UI[currentLang].uploadError);
-  } finally {
-    applyBtn.disabled    = false;
-    applyBtn.textContent = UI[currentLang].applyBtn;
-  }
-}
-
-async function submitUploads() {
-  if (!activeApplicationId) return;
-  const ui = UI[currentLang];
-
-  uploadSubmitBtn.disabled   = true;
-  uploadStatusEl.textContent = ui.uploadProgress;
-  uploadStatusEl.className   = 'upload-status loading';
-
-  const inputs   = uploadFieldsEl.querySelectorAll('input[type=file]');
-  const errors   = [];
-  let   uploaded = 0;
-
-  for (const input of inputs) {
-    const mandatory = input.dataset.mandatory === '1';
-    if (!input.files.length) {
-      if (mandatory) { errors.push(input.previousElementSibling?.textContent ?? 'Required file missing'); }
-      continue;
-    }
-    const file  = input.files[0];
-    const reqId = input.dataset.requirementId ? Number(input.dataset.requirementId) : null;
-    const result = await API.uploadDocument(activeApplicationId, file, reqId);
-    if (!result) errors.push(file.name);
-    else uploaded++;
-  }
-
-  if (errors.length) {
-    uploadStatusEl.textContent = ui.uploadError + ' (' + errors.join(', ') + ')';
-    uploadStatusEl.className   = 'upload-status error';
-  } else {
-    uploadStatusEl.textContent = ui.uploadSuccess + activeApplicationId;
-    uploadStatusEl.className   = 'upload-status success';
-    uploadSubmitBtn.disabled   = true;
-    appendMessage('assistant', ui.uploadSuccess + activeApplicationId);
-  }
-
-  uploadSubmitBtn.disabled = false;
-}
 
 /* Chat Pipeline */
 let currentLang   = 'rw';
+let activeServiceBackendId = null;
 let isBusy        = false;
 let backendOnline = false;
 async function sendMessage() {
@@ -541,18 +578,39 @@ async function sendMessage() {
 
   appendMessage('citizen', raw);
   showTyping();
-  let replyText = null; 
+  let replyText = null;
+  let paymentReady = null; 
+  let replyIntent = null;
   let grounded   = false;
   if (CONFIG.USE_BACKEND_CHAT && backendOnline) {
     try {
       const userId = SESSION.getUserId() ?? CONFIG.GUEST_USER_ID;
-      const reply = await API.chatWithAI(raw, userId, SESSION.conversationId, currentLang);
+      const reply = await API.chatWithAI(
+          raw,
+          userId,
+          SESSION.conversationId,
+          currentLang
+        );
+
         if (reply?.assistant_message) {
           replyText = reply.assistant_message;
+          replyIntent = reply.intent;
           grounded  = true; 
           
           if (reply.conversation_id) SESSION.conversationId = reply.conversation_id;
           if (reply.user_id)         SESSION.saveUserId(reply.user_id);
+
+          SESSION.applicationId              = reply.application_id ?? null;
+          SESSION.awaitingRequirementId      = reply.awaiting_requirement_id ?? null;
+          SESSION.awaitingRequirementUpload  = !!reply.awaiting_requirement_needs_upload;
+          SESSION.fee                        = reply.fee ?? SESSION.fee;
+          if (reply.intent === 'ready_for_payment') {
+            paymentReady = { applicationId: reply.application_id, fee: reply.fee };
+          }
+          attachBtn.hidden = !SESSION.awaitingRequirementUpload;
+          payBtn.hidden = reply.intent !== 'ready_for_payment';
+          if (reply.intent === 'ready_for_payment') payStatusEl.textContent = '';
+
           if (reply.service_name) {
           const matched = Object.values(KB).find(
             k => k.backendName.toLowerCase() === reply.service_name.toLowerCase()
@@ -585,6 +643,7 @@ async function sendMessage() {
 
   hideTyping();
   appendMessage('assistant', replyText, { badge: grounded });
+  if (paymentReady) appendPayButton(paymentReady.applicationId, paymentReady.fee);
   speak(replyText, currentLang);
   isBusy           = false;
   sendBtn.disabled = false;
@@ -700,6 +759,245 @@ function appendMessage(sender, text, opts = {}) {
   return msg;
 }
 
+let paymentButtonActive = false;
+
+function appendPayButton(applicationId, fee) {
+  if (paymentButtonActive) return;
+  paymentButtonActive = true;
+
+  const msg = document.createElement('div');
+  msg.className = 'msg assistant';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+
+  const btn = document.createElement('button');
+  btn.className = 'apply-btn';
+  btn.type = 'button';
+  const payLabel = currentLang === 'rw' ? 'Ishyura Nonaha' : 'Pay Now';
+  btn.textContent = payLabel;
+
+  btn.addEventListener('click', async () => {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = currentLang === 'rw' ? 'Gufungura urubuga rwo kwishyura...' : 'Opening secure payment...';
+
+    let checkoutResolved = false;
+
+    try {
+      const [config, application] = await Promise.all([
+        API.getPublicConfig(),
+        API.getApplication(applicationId),
+      ]);
+
+      if (!config?.flutterwave_public_key) throw new Error('Flutterwave is not configured');
+      if (typeof FlutterwaveCheckout !== 'function') throw new Error('Flutterwave script not loaded');
+
+      const customerEmail = application?.payment_email || 'no-email@example.com';
+      const txRef = `${application?.reference_number || applicationId}-${Date.now()}`;
+
+      btn.textContent = payLabel;
+
+      FlutterwaveCheckout({
+        public_key: config.flutterwave_public_key,
+        tx_ref: txRef,
+        amount: fee,
+        currency: 'RWF',
+        payment_options: 'card,mobilemoneyrwanda,ussd',
+        customer: { email: customerEmail },
+        customizations: {
+          title: 'GovAgent',
+          description: 'Government service application fee',
+          logo: '',
+        },
+        callback: async (data) => {
+          checkoutResolved = true;
+          btn.disabled = true;
+          btn.textContent = currentLang === 'rw' ? 'Kwemeza kwishyura...' : 'Verifying payment...';
+          const verifyingMsgEl = appendMessage('system', currentLang === 'rw' ? 'Kwemeza kwishyura...' : 'Verifying your payment...');
+
+          try {
+            const verified = await API.verifyFlutterwavePayment(applicationId, data.transaction_id, txRef);
+            verifyingMsgEl?.remove();
+
+            if (verified?.status === 'success') {
+              btn.textContent = currentLang === 'rw' ? 'Byishyuwe \u2713' : 'Paid \u2713';
+              const successMsg = verified.closing_message || (currentLang === 'rw'
+                ? `Kwishyura byagenze neza. Nomero y'ubwishyu: ${verified.gateway_reference}`
+                : `Payment successful! Payment reference: ${verified.gateway_reference}`);
+              appendMessage('assistant', successMsg, { badge: true });
+              speak(successMsg, currentLang);
+              appendRatingPrompt();
+            } else {
+              btn.disabled = false;
+              btn.textContent = payLabel;
+              paymentButtonActive = false;
+              const failMsg = currentLang === 'rw'
+                ? 'Ntibyashobotse kwemeza kwishyura. Ongera ugerageze.'
+                : 'We could not verify your payment. Please try again.';
+              appendMessage('assistant', failMsg);
+            }
+          } catch (err) {
+            console.error('[payment] verify failed:', err);
+            verifyingMsgEl?.remove();
+            btn.disabled = false;
+            btn.textContent = payLabel;
+            paymentButtonActive = false;
+            appendMessage('assistant', currentLang === 'rw' ? 'Kwishyura byanze. Ongera ugerageze.' : 'Payment failed. Please try again.');
+          }
+        },
+        onclose: () => {
+          if (checkoutResolved) return;
+          btn.disabled = false;
+          btn.textContent = payLabel;
+          paymentButtonActive = false;
+          appendMessage('system', currentLang === 'rw' ? 'Kwishyura byahagaritswe.' : 'Payment was cancelled.');
+        },
+      });
+    } catch (err) {
+      console.error('[payment] failed to open checkout:', err);
+      btn.disabled = false;
+      btn.textContent = payLabel;
+      paymentButtonActive = false;
+      const failMsg = currentLang === 'rw' ? 'Ntibyashobotse gufungura urubuga rwo kwishyura.' : 'Could not open the payment page. Please try again.';
+      appendMessage('assistant', failMsg);
+    }
+  });
+
+  bubble.appendChild(btn);
+  msg.appendChild(bubble);
+  messagesEl.appendChild(msg);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return msg;
+}
+
+function appendRatingPrompt() {
+  const msg = document.createElement('div');
+  msg.className = 'msg assistant';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+
+  const label = document.createElement('div');
+  label.textContent = currentLang === 'rw'
+    ? "Twishimiye kubagira umufasha wo kubatunganyiriza igihe kandi tukagabanya ubwoba! Nyamuneka mutange amanota:"
+    : "We're glad we could save you time and reduce the stress! Please rate your experience:";
+  label.style.marginBottom = '8px';
+  bubble.appendChild(label);
+
+  const starsWrap = document.createElement('div');
+  starsWrap.setAttribute('role', 'radiogroup');
+  starsWrap.setAttribute('aria-label', currentLang === 'rw' ? 'Tanga amanota' : 'Rate your experience');
+
+  const stars = [];
+  for (let i = 1; i <= 5; i++) {
+    const star = document.createElement('button');
+    star.type = 'button';
+    star.textContent = '\u2606';
+    star.style.fontSize = '22px';
+    star.style.background = 'none';
+    star.style.border = 'none';
+    star.style.cursor = 'pointer';
+    star.style.color = 'var(--accent, #d4a017)';
+    star.setAttribute('aria-label', `${i} star`);
+    star.addEventListener('click', () => {
+      stars.forEach((s, idx) => { s.textContent = idx < i ? '\u2605' : '\u2606'; });
+      starsWrap.querySelectorAll('button').forEach(b => b.disabled = true);
+      const thanks = document.createElement('div');
+      thanks.style.marginTop = '8px';
+      thanks.textContent = currentLang === 'rw' ? 'Murakoze kubona igitekerezo cyanyu!' : 'Thank you for your feedback!';
+      bubble.appendChild(thanks);
+    });
+    stars.push(star);
+    starsWrap.appendChild(star);
+  }
+  bubble.appendChild(starsWrap);
+
+  const newAppBtn = document.createElement('button');
+  newAppBtn.type = 'button';
+  newAppBtn.className = 'apply-btn';
+  newAppBtn.style.marginTop = '12px';
+  newAppBtn.textContent = currentLang === 'rw' ? 'Tangira Ubundi Busabe' : 'Start a New Application';
+  newAppBtn.addEventListener('click', () => {
+    SESSION.conversationId = null;
+    SESSION.applicationId = null;
+    SESSION.awaitingRequirementId = null;
+    SESSION.awaitingRequirementUpload = false;
+    SESSION.fee = null;
+    paymentButtonActive = false;
+    attachBtn.hidden = true;
+    newAppBtn.disabled = true;
+
+    if (serviceCard) serviceCard.hidden = true;
+    if (quickPanel) quickPanel.hidden = false;
+
+    const restartMsg = currentLang === 'rw'
+      ? 'Nta kibazo! Baza ku yindi serivisi ushaka gusaba.'
+      : 'Great! Ask me about the next service you would like to apply for.';
+    appendMessage('assistant', restartMsg);
+    speak(restartMsg, currentLang);
+    textInput.focus();
+  });
+  bubble.appendChild(newAppBtn);
+
+  msg.appendChild(bubble);
+  messagesEl.appendChild(msg);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return msg;
+}
+
+// function appendInlinePaymentButton() {
+//   const wrap = document.createElement('div');
+//   wrap.className = 'msg assistant';
+
+//   const btn = document.createElement('button');
+//   btn.className = 'apply-btn';
+//   btn.type = 'button';
+//   btn.textContent = currentLang === 'rw' ? 'Ishyura Nonaha' : 'Pay Now';
+
+//   const statusEl = document.createElement('p');
+//   statusEl.className = 'voice-note';
+//   statusEl.setAttribute('role', 'status');
+//   statusEl.setAttribute('aria-live', 'polite');
+
+//   btn.addEventListener('click', async () => {
+//     if (!SESSION.applicationId || !SESSION.fee) return;
+//     btn.disabled = true;
+//     statusEl.textContent = currentLang === 'rw' ? 'Kwishyura biratunganywa...' : 'Processing payment...';
+
+//     try {
+//       const payment = await API.createPayment(SESSION.applicationId, SESSION.fee);
+
+//       if (payment?.status === 'success') {
+//         statusEl.textContent = currentLang === 'rw'
+//           ? `Kwishyura byagenze neza! Nomero: ${payment.gateway_reference}`
+//           : `Payment successful! Reference: ${payment.gateway_reference}`;
+//         btn.hidden = true;
+//         payBtn.hidden = true;
+//         const successMsg = currentLang === 'rw'
+//           ? `Kwishyura byagenze neza. Ubusabe bwawe bwoherejwe. Nomero y'ubwishyu: ${payment.gateway_reference}`
+//           : `Payment successful! Your application has been submitted. Payment reference: ${payment.gateway_reference}`;
+//         appendMessage('assistant', successMsg, { badge: true });
+//         speak(successMsg, currentLang);
+//       } else if (payment?.status === 'pending') {
+//         statusEl.textContent = currentLang === 'rw' ? 'Kwishyura biracyategerejwe.' : 'Payment is pending confirmation.';
+//       } else {
+//         statusEl.textContent = currentLang === 'rw' ? 'Kwishyura byanze. Ongera ugerageze.' : 'Payment failed. Please try again.';
+//       }
+//     } catch (err) {
+//       console.error('[payment] failed:', err);
+//       statusEl.textContent = currentLang === 'rw' ? 'Kwishyura byanze. Ongera ugerageze.' : 'Payment failed. Please try again.';
+//     } finally {
+//       btn.disabled = false;
+//     }
+//   });
+
+//   wrap.appendChild(btn);
+//   wrap.appendChild(statusEl);
+//   messagesEl.appendChild(wrap);
+//   messagesEl.scrollTop = messagesEl.scrollHeight;
+// }
+
 function showTyping() {
   typingRow.hidden = false;
   typingRow.removeAttribute('aria-hidden');
@@ -726,8 +1024,8 @@ function showServiceCard(svc) {
   const ui = UI[currentLang];
   const L  = currentLang;
 
-  serviceCardEl.dataset.serviceId = svc.id;
-  serviceCardEl.hidden  = false;
+  serviceCard.dataset.serviceId = svc.id;
+  serviceCard.hidden    = false;
   quickPanel.hidden     = true;
   uploadPanel.hidden    = true;
 
@@ -805,9 +1103,10 @@ function setLanguage(lang) {
   if (applyBtn) applyBtn.textContent = ui.applyBtn;
 
   buildQuickList();
+  SESSION.updateSessionDisplay();
 
-  if (!serviceCardEl.hidden) {
-    const id = serviceCardEl.dataset.serviceId;
+  if (!serviceCard.hidden) {
+    const id = serviceCard.dataset.serviceId;
     if (id && KB[id]) showServiceCard(KB[id]);
   }
 
@@ -827,6 +1126,10 @@ const typingRow         = document.getElementById('typing-row');
 const textInput         = document.getElementById('text-input');
 const sendBtn           = document.getElementById('send-btn');
 const micBtn            = document.getElementById('mic-btn');
+const attachBtn         = document.getElementById('attach-btn');
+const payBtn             = document.getElementById('pay-btn');
+const payStatusEl        = document.getElementById('pay-status');
+const fileInput         = document.getElementById('file-input');
 const voiceNoteEl       = document.getElementById('voice-note');
 const statusText        = document.getElementById('status-text');
 const serviceCard       = document.getElementById('service-card');
@@ -866,14 +1169,70 @@ document.querySelectorAll('.lang-btn').forEach(btn => {
   btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
 });
 micBtn.addEventListener('click', toggleMic);
+
+// Pay button is now rendered inline in chat via appendPayButton()
+
+attachBtn.addEventListener('click', () => {
+  if (!SESSION.applicationId) return;
+  fileInput.click();
+});
+
+fileInput.addEventListener('change', async () => {
+  const file = fileInput.files[0];
+  fileInput.value = '';
+  if (!file || !SESSION.applicationId) return;
+
+  attachBtn.disabled = true;
+  appendMessage('citizen', `\ud83d\udcce ${file.name}`);
+  showTyping();
+
+  try {
+    const uploaded = await API.uploadDocument(SESSION.applicationId, file, SESSION.awaitingRequirementId);
+
+    if (uploaded?.id) {
+      const userId = SESSION.getUserId() ?? CONFIG.GUEST_USER_ID;
+      const reply = await API.chatWithAI(
+        `Uploaded ${file.name}`,
+        userId,
+        SESSION.conversationId,
+        currentLang
+      );
+      hideTyping();
+
+      if (reply?.assistant_message) {
+        SESSION.applicationId             = reply.application_id ?? SESSION.applicationId;
+        SESSION.awaitingRequirementId     = reply.awaiting_requirement_id ?? null;
+        SESSION.awaitingRequirementUpload = !!reply.awaiting_requirement_needs_upload;
+        SESSION.fee                       = reply.fee ?? SESSION.fee;
+        attachBtn.hidden = !SESSION.awaitingRequirementUpload;
+        payBtn.hidden = reply.intent !== 'ready_for_payment';
+        if (reply.intent === 'ready_for_payment') payStatusEl.textContent = '';
+        appendMessage('assistant', reply.assistant_message, { badge: true });
+        if (reply.intent === 'ready_for_payment') appendPayButton(reply.application_id, reply.fee);
+        speak(reply.assistant_message, currentLang);
+      }
+    } else {
+      hideTyping();
+      const failText = currentLang === 'rw' ? 'Ohereza byanze. Ongera ugerageze.' : 'Upload failed. Please try again.';
+      appendMessage('assistant', failText, { badge: false });
+    }
+  } catch (err) {
+    hideTyping();
+    console.error('[upload] failed:', err);
+    const failText = currentLang === 'rw' ? 'Ohereza byanze. Ongera ugerageze.' : 'Upload failed. Please try again.';
+    appendMessage('assistant', failText, { badge: false });
+  } finally {
+    attachBtn.disabled = false;
+  }
+});
 voiceToggle.addEventListener('click', () => {
   speakEnabled = !speakEnabled;
   voiceToggle.setAttribute('aria-pressed', String(speakEnabled));
   voiceToggleLabel.textContent = speakEnabled ? UI[currentLang].voiceOn : UI[currentLang].voiceOff;
   if (!speakEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel();
 });
-applyBtn.addEventListener('click', startApplication);
-uploadSubmitBtn.addEventListener('click', submitUploads);
+applyBtn.addEventListener('click', () => API.startApplication());
+uploadSubmitBtn.addEventListener('click', () => { uploadStatusEl.textContent = 'Upload not yet implemented in this demo.'; });
 uploadCancelBtn.addEventListener('click', () => {
   uploadPanel.hidden = true;
   uploadStatusEl.textContent = '';

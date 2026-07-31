@@ -1,3 +1,8 @@
+# Secrets - NEVER commit the real key
+.env
+.env.*
+!.env.example
+
 # Python
 __pycache__/
 *.py[cod]
@@ -6,28 +11,29 @@ __pycache__/
 .Python
 *.pyc
 
-# Environment
-.env
-.env.*
-!.env.example
+# Virtual environment
+venv/
+.venv/
+env/
 
 # Database
 *.db
 *.sqlite
 *.sqlite3
 
-# Virtual environment
-venv/
-env/
-.venv/
-
-# IDE
+# Editor / OS files
 .vscode/
 .idea/
-
-# OS
 .DS_Store
 Thumbs.db
 
 # Logs
 *.log
+
+# Test cache
+.pytest_cache/
+node_modules/
+
+# Uploaded application documents (runtime data)
+storage/*
+!storage/.gitkeep
