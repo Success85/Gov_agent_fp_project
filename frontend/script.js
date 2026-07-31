@@ -1251,4 +1251,7 @@ async function init() {
   appendMessage('assistant', UI.rw.greeting);
 }
 
+const footerYearEl = document.getElementById('footer-year');
+if (footerYearEl) footerYearEl.textContent = new Date().getFullYear();
+
 init();
