@@ -170,7 +170,17 @@ def _find_collected_email(application: Application) -> str | None:
         return application.payment_email
     for data in application.data:
         requirement = data.requirement
-        if requirement and data.value and "email" in requirement.name.lower():
+        # Match on the field NAME (as a hint) AND require the VALUE itself
+        # to actually look like an email (contains "@" with something after
+        # it) - some fields like "Valid Phone Number or Email" are
+        # either/or, so the name alone isn't proof the value is an email.
+        if (
+            requirement
+            and data.value
+            and "email" in requirement.name.lower()
+            and "@" in data.value
+            and "." in data.value.split("@")[-1]
+        ):
             return data.value
     return None
 
