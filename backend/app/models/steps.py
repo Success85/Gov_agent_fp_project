@@ -11,6 +11,7 @@ class Step(Base):
     step_no = Column(Integer, nullable=False)
     instruction = Column(Text, nullable=False)
     instruction_rw = Column(Text, nullable=False)
+    instruction_fr = Column(Text, nullable=True)
 
     __table_args__ = (
         UniqueConstraint(

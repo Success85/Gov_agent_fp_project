@@ -118,7 +118,7 @@ def get_next_missing_requirement(db: Session, application: Application) -> Requi
 
 
 def _requirement_prompt(requirement: Requirement, language: str) -> str:
-    name = requirement.name_rw if language == "rw" else requirement.name
+    name = requirement.name_rw if language == "rw" else (requirement.name_fr if language == "fr" and requirement.name_fr else requirement.name)
     if requirement.needs_upload:
         if language == "rw":
             return f"Nyamuneka ohereza (attach/upload) {name} ukoresheje buto yo kwohereza inyandiko."
@@ -137,18 +137,18 @@ def _application_summary_text(db: Session, application: Application, language: s
         .all()
     )
 
-    header = "Incamake y'Ubusabe" if language == "rw" else "Application Summary"
-    fee_label = "Amafaranga" if language == "rw" else "Fee"
+    header = "Incamake y'Ubusabe" if language == "rw" else ("Résumé de la Demande" if language == "fr" else "Application Summary")
+    fee_label = "Amafaranga" if language == "rw" else ("Frais" if language == "fr" else "Fee")
     confirm_line = (
         "\n\nOhereza 'yego' kugira ngo mukomeze kwishyura, cyangwa 'oya' kugira ngo muhagarike."
         if language == "rw"
         else "\n\nReply 'yes' to proceed to payment, or 'no' to cancel."
     )
 
-    name_label = "Amazina" if language == "rw" else "Full Name"
+    name_label = "Amazina" if language == "rw" else ("Nom Complet" if language == "fr" else "Full Name")
     lines = [f"**{header}: {service.name}**", f"{name_label}: {application.applicant_name or 'N/A'}", ""]
     for requirement in requirements:
-        label = requirement.name_rw if language == "rw" else requirement.name
+        label = requirement.name_rw if language == "rw" else (requirement.name_fr if language == "fr" and requirement.name_fr else requirement.name)
         data = next((d for d in application.data if d.requirement_id == requirement.id), None)
         upload = next((u for u in application.uploads if u.requirement_id == requirement.id), None)
         if data and data.value:
@@ -173,6 +173,30 @@ def _find_collected_email(application: Application) -> str | None:
         if requirement and data.value and "email" in requirement.name.lower():
             return data.value
     return None
+
+
+def _localized_name(item, language: str) -> str:
+    if language == "rw":
+        return item.name_rw
+    if language == "fr" and getattr(item, "name_fr", None):
+        return item.name_fr
+    return item.name
+
+
+def _localized_service_name(service, language: str) -> str:
+    if language == "rw":
+        return service.name_rw
+    if language == "fr" and getattr(service, "name_fr", None):
+        return service.name_fr
+    return service.name
+
+
+def _localized_instruction(item, language: str) -> str:
+    if language == "rw":
+        return item.instruction_rw
+    if language == "fr" and getattr(item, "instruction_fr", None):
+        return item.instruction_fr
+    return item.instruction
 
 
 def build_ai_reply(db: Session, conversation_id: int, message: str, service_id: int | None = None, language: str = "rw") -> tuple[Message, str, str | None, int | None]:
@@ -310,11 +334,19 @@ def build_ai_reply(db: Session, conversation_id: int, message: str, service_id: 
             conversation.awaiting_payment_confirmation = False
             db.add(conversation)
             db.commit()
-            text = "Nta kibazo. Ni iki kindi GovAgent yagufasha?" if language == "rw" else "No problem. What else can GovAgent help you with?"
+            text = (
+                "Nta kibazo. Ni iki kindi GovAgent yagufasha?" if language == "rw"
+                else "Pas de probl\u00e8me. Que puis-je faire d'autre pour vous ?" if language == "fr"
+                else "No problem. What else can GovAgent help you with?"
+            )
             assistant_message = add_message(db, conversation_id, "assistant", text)
             return assistant_message, "general_query", None, None
 
-        text = "Ohereza 'yego' cyangwa 'oya'." if language == "rw" else "Please reply 'yes' or 'no'."
+        text = (
+            "Ohereza 'yego' cyangwa 'oya'." if language == "rw"
+            else "Veuillez r\u00e9pondre par 'oui' ou 'non'." if language == "fr"
+            else "Please reply 'yes' or 'no'."
+        )
         assistant_message = add_message(db, conversation_id, "assistant", text)
         return assistant_message, "awaiting_payment_confirmation", None, None
 
@@ -341,7 +373,11 @@ def build_ai_reply(db: Session, conversation_id: int, message: str, service_id: 
             conversation.pending_service_id = None
             db.add(conversation)
             db.commit()
-            text = "Nta kibazo. Ni iki kindi GovAgent yagufasha?" if language == "rw" else "No problem. What else can GovAgent help you with?"
+            text = (
+                "Nta kibazo. Ni iki kindi GovAgent yagufasha?" if language == "rw"
+                else "Pas de probl\u00e8me. Que puis-je faire d'autre pour vous ?" if language == "fr"
+                else "No problem. What else can GovAgent help you with?"
+            )
             assistant_message = add_message(db, conversation_id, "assistant", text)
             return assistant_message, "general_query", None, None
 
@@ -368,11 +404,11 @@ def build_ai_reply(db: Session, conversation_id: int, message: str, service_id: 
             selected_service_name = matched_service.name
             overview = get_service_overview(db, matched_service.id)
             selected_context = GroundingContext(
-                service_name=matched_service.name,
+                service_name=_localized_service_name(matched_service, language),
                 description=matched_service.description,
                 fee=matched_service.fee,
-                requirements=[item.name for item in overview["requirements"]],
-                steps=[item.instruction for item in overview["steps"]],
+                requirements=[_localized_name(item, language) for item in overview["requirements"]],
+                steps=[_localized_instruction(item, language) for item in overview["steps"]],
             )
 
     if selected_context is None and selected_service_id is not None:
@@ -380,11 +416,11 @@ def build_ai_reply(db: Session, conversation_id: int, message: str, service_id: 
         selected_service = overview["service"]
         selected_service_name = selected_service.name
         selected_context = GroundingContext(
-            service_name=selected_service.name,
+            service_name=_localized_service_name(selected_service, language),
             description=selected_service.description,
             fee=selected_service.fee,
-            requirements=[item.name for item in overview["requirements"]],
-            steps=[item.instruction for item in overview["steps"]],
+            requirements=[_localized_name(item, language) for item in overview["requirements"]],
+            steps=[_localized_instruction(item, language) for item in overview["steps"]],
         )
 
     if selected_context is None:

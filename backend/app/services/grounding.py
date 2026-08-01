@@ -22,6 +22,12 @@ SYSTEM_PROMPTS = {
 		"You are a government-service assistant. Answer using only verified context. "
 		"If information is missing, say that clearly and ask for the needed details."
 	),
+	"fr": (
+		"Vous êtes un assistant de services gouvernementaux. Répondez en utilisant uniquement "
+		"le contexte vérifié fourni ci-dessous, dans le même ordre et avec le même nombre "
+		"d'éléments que les données fournies - ne restructurez pas et n'inventez pas d'étapes "
+		"supplémentaires. Si une information manque, dites-le clairement et demandez les détails nécessaires."
+	),
 }
 
 

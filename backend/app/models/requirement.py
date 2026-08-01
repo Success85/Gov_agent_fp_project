@@ -11,6 +11,7 @@ class Requirement(Base):
     service_id = Column(Integer, ForeignKey("services.id"), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     name_rw = Column(String(255), nullable=False)
+    name_fr = Column(String(255), nullable=True)
     is_mandatory = Column(Boolean, nullable=False, default=True)
     needs_upload = Column(Boolean, nullable=False, default=False)
     validation_type = Column(String(50), nullable=True)

@@ -52,6 +52,7 @@ def seed_services(db):
         Service(
             name="Application for National ID",
             name_rw="Gusaba Indangamuntu",
+            name_fr="Demande de Carte d'Identité Nationale",
             category="Identification",
             description="Apply for a Rwandan national identity card. Provided by the National Identification Agency (NIDA).",
             fee=500.00,
@@ -60,6 +61,7 @@ def seed_services(db):
         Service(
             name="Birth Record",
             name_rw="Kwandikisha Amavuko",
+            name_fr="Acte de Naissance (Enregistrement)",
             category="Family",
             description=(
                 "Register a new birth in the civil registry (creates the official birth record). "
@@ -72,6 +74,7 @@ def seed_services(db):
         Service(
             name="Birth Certificate",
             name_rw="Icyemezo cy'Amavuko",
+            name_fr="Certificat de Naissance",
             category="Family",
             description="Request an official birth certificate for an already-registered birth record. Processed at the sector level.",
             fee=500.00,
@@ -80,6 +83,7 @@ def seed_services(db):
         Service(
             name="Marriage Declaration",
             name_rw="Kwiyandikisha ku Bukwe",
+            name_fr="Déclaration de Mariage",
             category="Family",
             description=(
                 "Declare an upcoming civil marriage at least 21 days in advance. Requires details for both "
@@ -91,6 +95,7 @@ def seed_services(db):
         Service(
             name="Mutuelle (Health Insurance) Renewal",
             name_rw="Kwishyura Ubwishingizi bw'Ubuzima",
+            name_fr="Renouvellement de la Mutuelle de Santé",
             category="Health",
             description=(
                 "Apply for and pay Community-Based Health Insurance (Mutuelle de Sante) for an individual "
@@ -105,6 +110,7 @@ def seed_services(db):
         Service(
             name="Driving License Application",
             name_rw="Gusaba Uruhushya rwo Gutwara Imodoka",
+            name_fr="Demande de Permis de Conduire",
             category="Transport",
             description=(
                 "Apply for a Definitive Driving License, issued by Rwanda National Police (RNP) after passing the "
@@ -128,64 +134,64 @@ def seed_requirements(db, services):
 
     requirements = [
         # ---- National ID (indices 0-5) ----
-        Requirement(service_id=national_id.id, name="Applying For (Self or Bulk)", name_rw="Urasaba Wowe cyangwa Benshi", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=national_id.id, name="Child ID", name_rw="Child ID", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=national_id.id, name="Biometric Sector", name_rw="Umurenge wo Gufata Ibimenyetso", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=national_id.id, name="Biometric Date", name_rw="Itariki yo Gufata Ibimenyetso", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=national_id.id, name="Collection District", validation_type="district", name_rw="Akarere ko Kuraho", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=national_id.id, name="Collection Sector", name_rw="Umurenge wo Kuraho", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=national_id.id, name="Applying For (Self or Bulk)", name_rw="Urasaba Wowe cyangwa Benshi", name_fr="Vous demandez pour (Vous-même ou en Masse)", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=national_id.id, name="Child ID", name_rw="Child ID", name_fr="Identifiant de l'Enfant", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=national_id.id, name="Biometric Sector", name_rw="Umurenge wo Gufata Ibimenyetso", name_fr="Secteur de Prise des Empreintes", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=national_id.id, name="Biometric Date", name_rw="Itariki yo Gufata Ibimenyetso", name_fr="Date de Prise des Empreintes", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=national_id.id, name="Collection District", validation_type="district", name_rw="Akarere ko Kuraho", name_fr="District de Retrait", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=national_id.id, name="Collection Sector", name_rw="Umurenge wo Kuraho", name_fr="Secteur de Retrait", is_mandatory=True, needs_upload=False),
 
         # ---- Birth Record (indices 6-19) ----
-        Requirement(service_id=birth_record.id, name="Applying For (Self or Child)", name_rw="Urasaba Wowe cyangwa Umwana", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=birth_record.id, name="Applicant ID Type and Number", validation_type="national_id", name_rw="Ubwoko n'Inomero y'Indangamuntu y'Usaba", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=birth_record.id, name="Mother's ID Type and Number", validation_type="national_id", name_rw="Ubwoko n'Inomero y'Indangamuntu ya Nyina", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=birth_record.id, name="Father's ID Type and Number", validation_type="national_id", name_rw="Ubwoko n'Inomero y'Indangamuntu ya Se", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=birth_record.id, name="Do Parents Live in Rwanda? (Yes/No)", name_rw="Ese Ababyeyi Batuye mu Rwanda?", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=birth_record.id, name="Parents' Residential Address", name_rw="Aho Ababyeyi Batuye", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=birth_record.id, name="Witness ID Type and Number", validation_type="national_id", name_rw="Ubwoko n'Inomero y'Indangamuntu y'Umuhamya", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=birth_record.id, name="Witness Phone Number", name_rw="Nomero ya Terefone y'Umuhamya", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=birth_record.id, name="Declarant ID Type and Number", validation_type="national_id", name_rw="Ubwoko n'Inomero y'Indangamuntu y'Utangaza", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=birth_record.id, name="Declarant Phone Number", name_rw="Nomero ya Terefone y'Utangaza", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=birth_record.id, name="Processing Office (District and Sector)", name_rw="Ibiro Bitunganya (Akarere n'Umurenge)", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=birth_record.id, name="Mother's Passport (if applicable)", name_rw="Pasiporo ya Nyina (niba ihari)", is_mandatory=False, needs_upload=True),
-        Requirement(service_id=birth_record.id, name="Father's Passport (if applicable)", name_rw="Pasiporo ya Se (niba ihari)", is_mandatory=False, needs_upload=True),
-        Requirement(service_id=birth_record.id, name="Declarant's Passport Copy (if applicable)", name_rw="Kopi ya Pasiporo y'Utangaza (niba ihari)", is_mandatory=False, needs_upload=True),
+        Requirement(service_id=birth_record.id, name="Applying For (Self or Child)", name_rw="Urasaba Wowe cyangwa Umwana", name_fr="Vous demandez pour (Vous-même ou un Enfant)", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=birth_record.id, name="Applicant ID Type and Number", validation_type="national_id", name_rw="Ubwoko n'Inomero y'Indangamuntu y'Usaba", name_fr="Type et Numéro de Carte d'Identité du Demandeur", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=birth_record.id, name="Mother's ID Type and Number", validation_type="national_id", name_rw="Ubwoko n'Inomero y'Indangamuntu ya Nyina", name_fr="Type et Numéro de Carte d'Identité de la Mère", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=birth_record.id, name="Father's ID Type and Number", validation_type="national_id", name_rw="Ubwoko n'Inomero y'Indangamuntu ya Se", name_fr="Type et Numéro de Carte d'Identité du Père", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=birth_record.id, name="Do Parents Live in Rwanda? (Yes/No)", name_rw="Ese Ababyeyi Batuye mu Rwanda?", name_fr="Les Parents Vivent-ils au Rwanda ? (Oui/Non)", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=birth_record.id, name="Parents' Residential Address", name_rw="Aho Ababyeyi Batuye", name_fr="Adresse de Résidence des Parents", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=birth_record.id, name="Witness ID Type and Number", validation_type="national_id", name_rw="Ubwoko n'Inomero y'Indangamuntu y'Umuhamya", name_fr="Type et Numéro de Carte d'Identité du Témoin", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=birth_record.id, name="Witness Phone Number", name_rw="Nomero ya Terefone y'Umuhamya", name_fr="Numéro de Téléphone du Témoin", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=birth_record.id, name="Declarant ID Type and Number", validation_type="national_id", name_rw="Ubwoko n'Inomero y'Indangamuntu y'Utangaza", name_fr="Type et Numéro de Carte d'Identité du Déclarant", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=birth_record.id, name="Declarant Phone Number", name_rw="Nomero ya Terefone y'Utangaza", name_fr="Numéro de Téléphone du Déclarant", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=birth_record.id, name="Processing Office (District and Sector)", name_rw="Ibiro Bitunganya (Akarere n'Umurenge)", name_fr="Bureau de Traitement (District et Secteur)", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=birth_record.id, name="Mother's Passport (if applicable)", name_rw="Pasiporo ya Nyina (niba ihari)", name_fr="Passeport de la Mère (le cas échéant)", is_mandatory=False, needs_upload=True),
+        Requirement(service_id=birth_record.id, name="Father's Passport (if applicable)", name_rw="Pasiporo ya Se (niba ihari)", name_fr="Passeport du Père (le cas échéant)", is_mandatory=False, needs_upload=True),
+        Requirement(service_id=birth_record.id, name="Declarant's Passport Copy (if applicable)", name_rw="Kopi ya Pasiporo y'Utangaza (niba ihari)", name_fr="Copie du Passeport du Déclarant (le cas échéant)", is_mandatory=False, needs_upload=True),
 
         # ---- Birth Certificate (indices 20-22) ----
-        Requirement(service_id=birth_cert.id, name="Applying For (Self or Child)", name_rw="Urasaba Wowe cyangwa Umwana", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=birth_cert.id, name="Processing Office District", validation_type="district", name_rw="Akarere k'Ibiro Bitunganya", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=birth_cert.id, name="Processing Office Sector", name_rw="Umurenge w'Ibiro Bitunganya", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=birth_cert.id, name="Applying For (Self or Child)", name_rw="Urasaba Wowe cyangwa Umwana", name_fr="Vous demandez pour (Vous-même ou un Enfant)", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=birth_cert.id, name="Processing Office District", validation_type="district", name_rw="Akarere k'Ibiro Bitunganya", name_fr="District du Bureau de Traitement", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=birth_cert.id, name="Processing Office Sector", name_rw="Umurenge w'Ibiro Bitunganya", name_fr="Secteur du Bureau de Traitement", is_mandatory=True, needs_upload=False),
 
         # ---- Marriage Declaration (indices 23-38) ----
-        Requirement(service_id=marriage_decl.id, name="Country of Marriage (Rwanda or Abroad)", name_rw="Igihugu Uzashyingirwamo", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=marriage_decl.id, name="Marriage Date (at least 21 days from today)", validation_type="marriage_date_21_days", name_rw="Itariki y'Ubukwe (nibura iminsi 21 uhereye none)", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=marriage_decl.id, name="Wife's ID Type and Number", validation_type="national_id", name_rw="Ubwoko n'Inomero y'Indangamuntu y'Umugore", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=marriage_decl.id, name="Wife's Residence (District/Sector or Country/City)", name_rw="Aho Umugore Atuye", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=marriage_decl.id, name="Wife's Profession", name_rw="Umwuga w'Umugore", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=marriage_decl.id, name="Wife's Occupation", name_rw="Akazi k'Umugore", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=marriage_decl.id, name="Wife's Phone Number", name_rw="Nomero ya Terefone y'Umugore", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=marriage_decl.id, name="Wife's Email Address", name_rw="Imeyili y'Umugore", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=marriage_decl.id, name="Husband's ID Type and Number", validation_type="national_id", name_rw="Ubwoko n'Inomero y'Indangamuntu y'Umugabo", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=marriage_decl.id, name="Husband's Residence (District/Sector or Country/City)", name_rw="Aho Umugabo Atuye", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=marriage_decl.id, name="Husband's Profession", name_rw="Umwuga w'Umugabo", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=marriage_decl.id, name="Husband's Occupation", name_rw="Akazi k'Umugabo", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=marriage_decl.id, name="Husband's Phone Number", name_rw="Nomero ya Terefone y'Umugabo", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=marriage_decl.id, name="Husband's Email Address", name_rw="Imeyili y'Umugabo", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=marriage_decl.id, name="Wife's Birth Certificate", name_rw="Icyemezo cy'Amavuko cy'Umugore", is_mandatory=True, needs_upload=True),
-        Requirement(service_id=marriage_decl.id, name="Husband's Birth Certificate", name_rw="Icyemezo cy'Amavuko cy'Umugabo", is_mandatory=True, needs_upload=True),
-        Requirement(service_id=marriage_decl.id, name="Wife's Certificate of Being Single", name_rw="Icyemezo ko Umugore Atarashaka", is_mandatory=True, needs_upload=True),
+        Requirement(service_id=marriage_decl.id, name="Country of Marriage (Rwanda or Abroad)", name_rw="Igihugu Uzashyingirwamo", name_fr="Pays du Mariage (Rwanda ou à l'Étranger)", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=marriage_decl.id, name="Marriage Date (at least 21 days from today)", validation_type="marriage_date_21_days", name_rw="Itariki y'Ubukwe (nibura iminsi 21 uhereye none)", name_fr="Date du Mariage (au moins 21 jours à partir d'aujourd'hui)", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=marriage_decl.id, name="Wife's ID Type and Number", validation_type="national_id", name_rw="Ubwoko n'Inomero y'Indangamuntu y'Umugore", name_fr="Type et Numéro de Carte d'Identité de l'Épouse", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=marriage_decl.id, name="Wife's Residence (District/Sector or Country/City)", name_rw="Aho Umugore Atuye", name_fr="Résidence de l'Épouse (District/Secteur ou Pays/Ville)", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=marriage_decl.id, name="Wife's Profession", name_rw="Umwuga w'Umugore", name_fr="Profession de l'Épouse", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=marriage_decl.id, name="Wife's Occupation", name_rw="Akazi k'Umugore", name_fr="Emploi de l'Épouse", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=marriage_decl.id, name="Wife's Phone Number", name_rw="Nomero ya Terefone y'Umugore", name_fr="Numéro de Téléphone de l'Épouse", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=marriage_decl.id, name="Wife's Email Address", name_rw="Imeyili y'Umugore", name_fr="Adresse E-mail de l'Épouse", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=marriage_decl.id, name="Husband's ID Type and Number", validation_type="national_id", name_rw="Ubwoko n'Inomero y'Indangamuntu y'Umugabo", name_fr="Type et Numéro de Carte d'Identité de l'Époux", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=marriage_decl.id, name="Husband's Residence (District/Sector or Country/City)", name_rw="Aho Umugabo Atuye", name_fr="Résidence de l'Époux (District/Secteur ou Pays/Ville)", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=marriage_decl.id, name="Husband's Profession", name_rw="Umwuga w'Umugabo", name_fr="Profession de l'Époux", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=marriage_decl.id, name="Husband's Occupation", name_rw="Akazi k'Umugabo", name_fr="Emploi de l'Époux", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=marriage_decl.id, name="Husband's Phone Number", name_rw="Nomero ya Terefone y'Umugabo", name_fr="Numéro de Téléphone de l'Époux", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=marriage_decl.id, name="Husband's Email Address", name_rw="Imeyili y'Umugabo", name_fr="Adresse E-mail de l'Époux", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=marriage_decl.id, name="Wife's Birth Certificate", name_rw="Icyemezo cy'Amavuko cy'Umugore", name_fr="Certificat de Naissance de l'Épouse", is_mandatory=True, needs_upload=True),
+        Requirement(service_id=marriage_decl.id, name="Husband's Birth Certificate", name_rw="Icyemezo cy'Amavuko cy'Umugabo", name_fr="Certificat de Naissance de l'Époux", is_mandatory=True, needs_upload=True),
+        Requirement(service_id=marriage_decl.id, name="Wife's Certificate of Being Single", name_rw="Icyemezo ko Umugore Atarashaka", name_fr="Certificat de Célibat de l'Épouse", is_mandatory=True, needs_upload=True),
 
         # ---- Mutuelle (indices 39-43) ----
-        Requirement(service_id=mutuelle.id, name="Application Scope (Bulk or Single)", name_rw="Ubwoko bw'Ubusabe (Benshi cyangwa Umwe)", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=mutuelle.id, name="Application Type (Individual/Company/Corporate/NGO/FBO/Other)", name_rw="Ubwoko bw'Usaba", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=mutuelle.id, name="Organization Name and TIN (if applicable)", name_rw="Izina ry'Ikigo na TIN (niba bihari)", is_mandatory=False, needs_upload=False),
-        Requirement(service_id=mutuelle.id, name="Coverage Year", name_rw="Umwaka w'Ubwishingizi", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=mutuelle.id, name="Filled Household Template", name_rw="Urupapuro rw'Umuryango Rwuzuye", is_mandatory=True, needs_upload=True),
+        Requirement(service_id=mutuelle.id, name="Application Scope (Bulk or Single)", name_rw="Ubwoko bw'Ubusabe (Benshi cyangwa Umwe)", name_fr="Portée de la Demande (En Masse ou Individuelle)", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=mutuelle.id, name="Application Type (Individual/Company/Corporate/NGO/FBO/Other)", name_rw="Ubwoko bw'Usaba", name_fr="Type de Demandeur (Individuel/Entreprise/Société/ONG/OFB/Autre)", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=mutuelle.id, name="Organization Name and TIN (if applicable)", name_rw="Izina ry'Ikigo na TIN (niba bihari)", name_fr="Nom de l'Organisation et NIF (le cas échéant)", is_mandatory=False, needs_upload=False),
+        Requirement(service_id=mutuelle.id, name="Coverage Year", name_rw="Umwaka w'Ubwishingizi", name_fr="Année de Couverture", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=mutuelle.id, name="Filled Household Template", name_rw="Urupapuro rw'Umuryango Rwuzuye", name_fr="Modèle de Ménage Rempli", is_mandatory=True, needs_upload=True),
 
         # ---- Driving License (indices 44-46) ----
-        Requirement(service_id=driving_license.id, name="National ID", name_rw="Indangamuntu", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=driving_license.id, name="Registration Code from Passed Definitive Driving Test", name_rw="Kode yo Kwiyandikisha (nyuma yo gutsinda ikizamini)", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=driving_license.id, name="Valid Phone Number or Email", name_rw="Nomero ya Terefone cyangwa Imeyili", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=driving_license.id, name="National ID", name_rw="Indangamuntu", name_fr="Carte d'Identité Nationale", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=driving_license.id, name="Registration Code from Passed Definitive Driving Test", name_rw="Kode yo Kwiyandikisha (nyuma yo gutsinda ikizamini)", name_fr="Code d'Inscription de l'Examen Pratique Réussi", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=driving_license.id, name="Valid Phone Number or Email", name_rw="Nomero ya Terefone cyangwa Imeyili", name_fr="Numéro de Téléphone ou E-mail Valide", is_mandatory=True, needs_upload=False),
     ]
 
     for requirement in requirements:
@@ -219,42 +225,42 @@ def seed_steps(db, services):
     national_id, birth_record, birth_cert, marriage_decl, mutuelle, driving_license = services
 
     steps = [
-        Step(service_id=national_id.id, step_no=1, instruction="Select 'Application for National ID'", instruction_rw="Hitamo 'Gusaba Indangamuntu'"),
-        Step(service_id=national_id.id, step_no=2, instruction="Review the processing time, fee, and provider (NIDA)", instruction_rw="Reba igihe bitwara, ikiguzi, n'ikigo gitanga (NIDA)"),
-        Step(service_id=national_id.id, step_no=3, instruction="Select who you're applying for: self or bulk", instruction_rw="Hitamo urasaba wowe cyangwa benshi"),
-        Step(service_id=national_id.id, step_no=4, instruction="Fill in application details: Child ID, biometric sector/date, collection office", instruction_rw="Uzuza amakuru: Child ID, umurenge wo gufata ibimenyetso/itariki, ibiro byo kuraho"),
-        Step(service_id=national_id.id, step_no=5, instruction="Review the summary and proceed to payment", instruction_rw="Reba incamake hanyuma ukomeze kwishyura"),
+        Step(service_id=national_id.id, step_no=1, instruction="Select 'Application for National ID'", instruction_rw="Hitamo 'Gusaba Indangamuntu'", instruction_fr="Sélectionnez « Demande de Carte d'Identité Nationale »"),
+        Step(service_id=national_id.id, step_no=2, instruction="Review the processing time, fee, and provider (NIDA)", instruction_rw="Reba igihe bitwara, ikiguzi, n'ikigo gitanga (NIDA)", instruction_fr="Vérifiez le délai de traitement, les frais et le fournisseur (NIDA)"),
+        Step(service_id=national_id.id, step_no=3, instruction="Select who you're applying for: self or bulk", instruction_rw="Hitamo urasaba wowe cyangwa benshi", instruction_fr="Choisissez pour qui vous faites la demande : vous-même ou en masse"),
+        Step(service_id=national_id.id, step_no=4, instruction="Fill in application details: Child ID, biometric sector/date, collection office", instruction_rw="Uzuza amakuru: Child ID, umurenge wo gufata ibimenyetso/itariki, ibiro byo kuraho", instruction_fr="Remplissez les détails de la demande : identifiant de l'enfant, secteur/date biométrique, bureau de retrait"),
+        Step(service_id=national_id.id, step_no=5, instruction="Review the summary and proceed to payment", instruction_rw="Reba incamake hanyuma ukomeze kwishyura", instruction_fr="Vérifiez le résumé et procédez au paiement"),
 
-        Step(service_id=birth_record.id, step_no=1, instruction="Choose 'Birth Record' (as opposed to Birth Certificate) and note the Rwf 1,500 fee", instruction_rw="Hitamo 'Kwandikisha Amavuko' (byatandukanye n'Icyemezo cy'Amavuko), wemeze amafaranga 1,500"),
-        Step(service_id=birth_record.id, step_no=2, instruction="Select who you're applying for: self or child", instruction_rw="Hitamo urasaba wowe cyangwa umwana"),
-        Step(service_id=birth_record.id, step_no=3, instruction="Provide the applicant's ID type and number", instruction_rw="Tanga ubwoko n'inomero y'indangamuntu y'usaba"),
-        Step(service_id=birth_record.id, step_no=4, instruction="Provide both parents' details, including whether they live in Rwanda and their address", instruction_rw="Tanga amakuru y'ababyeyi bombi, harimo niba batuye mu Rwanda n'aho batuye"),
-        Step(service_id=birth_record.id, step_no=5, instruction="Provide witness details (ID and phone number)", instruction_rw="Tanga amakuru y'umuhamya (indangamuntu na terefone)"),
-        Step(service_id=birth_record.id, step_no=6, instruction="Provide declarant details (ID and phone number)", instruction_rw="Tanga amakuru y'utangaza (indangamuntu na terefone)"),
-        Step(service_id=birth_record.id, step_no=7, instruction="Select the processing office (district and sector, or embassy if abroad)", instruction_rw="Hitamo ibiro bitunganya (akarere n'umurenge, cyangwa ambasade niba uri hanze)"),
-        Step(service_id=birth_record.id, step_no=8, instruction="Upload supporting passports if applicable, review the summary, and proceed to payment", instruction_rw="Ohereza pasiporo niba zisabwa, urebe incamake, hanyuma ukomeze kwishyura"),
+        Step(service_id=birth_record.id, step_no=1, instruction="Choose 'Birth Record' (as opposed to Birth Certificate) and note the Rwf 1,500 fee", instruction_rw="Hitamo 'Kwandikisha Amavuko' (byatandukanye n'Icyemezo cy'Amavuko), wemeze amafaranga 1,500", instruction_fr="Choisissez « Acte de Naissance » (par opposition au Certificat de Naissance) et notez les frais de 1 500 Rwf"),
+        Step(service_id=birth_record.id, step_no=2, instruction="Select who you're applying for: self or child", instruction_rw="Hitamo urasaba wowe cyangwa umwana", instruction_fr="Choisissez pour qui vous faites la demande : vous-même ou un enfant"),
+        Step(service_id=birth_record.id, step_no=3, instruction="Provide the applicant's ID type and number", instruction_rw="Tanga ubwoko n'inomero y'indangamuntu y'usaba", instruction_fr="Indiquez le type et le numéro de carte d'identité du demandeur"),
+        Step(service_id=birth_record.id, step_no=4, instruction="Provide both parents' details, including whether they live in Rwanda and their address", instruction_rw="Tanga amakuru y'ababyeyi bombi, harimo niba batuye mu Rwanda n'aho batuye", instruction_fr="Indiquez les détails des deux parents, y compris s'ils vivent au Rwanda et leur adresse"),
+        Step(service_id=birth_record.id, step_no=5, instruction="Provide witness details (ID and phone number)", instruction_rw="Tanga amakuru y'umuhamya (indangamuntu na terefone)", instruction_fr="Indiquez les détails du témoin (carte d'identité et numéro de téléphone)"),
+        Step(service_id=birth_record.id, step_no=6, instruction="Provide declarant details (ID and phone number)", instruction_rw="Tanga amakuru y'utangaza (indangamuntu na terefone)", instruction_fr="Indiquez les détails du déclarant (carte d'identité et numéro de téléphone)"),
+        Step(service_id=birth_record.id, step_no=7, instruction="Select the processing office (district and sector, or embassy if abroad)", instruction_rw="Hitamo ibiro bitunganya (akarere n'umurenge, cyangwa ambasade niba uri hanze)", instruction_fr="Choisissez le bureau de traitement (district et secteur, ou ambassade si à l'étranger)"),
+        Step(service_id=birth_record.id, step_no=8, instruction="Upload supporting passports if applicable, review the summary, and proceed to payment", instruction_rw="Ohereza pasiporo niba zisabwa, urebe incamake, hanyuma ukomeze kwishyura", instruction_fr="Téléversez les passeports justificatifs le cas échéant, vérifiez le résumé et procédez au paiement"),
 
-        Step(service_id=birth_cert.id, step_no=1, instruction="Choose 'Birth Certificate' for an already-registered birth record", instruction_rw="Hitamo 'Icyemezo cy'Amavuko' ku mavuko yamaze kwandikwa"),
-        Step(service_id=birth_cert.id, step_no=2, instruction="Select self or child, then choose the processing district and sector", instruction_rw="Hitamo wowe cyangwa umwana, hanyuma uhitemo akarere n'umurenge"),
-        Step(service_id=birth_cert.id, step_no=3, instruction="Review the summary and proceed to payment", instruction_rw="Reba incamake hanyuma ukomeze kwishyura"),
+        Step(service_id=birth_cert.id, step_no=1, instruction="Choose 'Birth Certificate' for an already-registered birth record", instruction_rw="Hitamo 'Icyemezo cy'Amavuko' ku mavuko yamaze kwandikwa", instruction_fr="Choisissez « Certificat de Naissance » pour un acte de naissance déjà enregistré"),
+        Step(service_id=birth_cert.id, step_no=2, instruction="Select self or child, then choose the processing district and sector", instruction_rw="Hitamo wowe cyangwa umwana, hanyuma uhitemo akarere n'umurenge", instruction_fr="Choisissez vous-même ou un enfant, puis sélectionnez le district et le secteur de traitement"),
+        Step(service_id=birth_cert.id, step_no=3, instruction="Review the summary and proceed to payment", instruction_rw="Reba incamake hanyuma ukomeze kwishyura", instruction_fr="Vérifiez le résumé et procédez au paiement"),
 
-        Step(service_id=marriage_decl.id, step_no=1, instruction="Select the country of marriage and a date at least 21 days from today", instruction_rw="Hitamo igihugu uzashyingirwamo n'itariki nibura iminsi 21 uhereye none"),
-        Step(service_id=marriage_decl.id, step_no=2, instruction="Provide the wife's ID, residence, profession, occupation, phone, and email", instruction_rw="Tanga amakuru y'umugore: indangamuntu, aho atuye, umwuga, akazi, terefone, imeyili"),
-        Step(service_id=marriage_decl.id, step_no=3, instruction="Provide the husband's ID, residence, profession, occupation, phone, and email", instruction_rw="Tanga amakuru y'umugabo: indangamuntu, aho atuye, umwuga, akazi, terefone, imeyili"),
-        Step(service_id=marriage_decl.id, step_no=4, instruction="Upload both birth certificates and the wife's certificate of being single", instruction_rw="Ohereza ibyemezo by'amavuko byombi n'icyemezo ko umugore atarashaka"),
-        Step(service_id=marriage_decl.id, step_no=5, instruction="Review the summary and proceed to payment (free on Thursdays, Rwf 50,000 other days)", instruction_rw="Reba incamake hanyuma ukomeze kwishyura (ku wa kane ni ubuntu, indi minsi ni 50,000 Rwf)"),
+        Step(service_id=marriage_decl.id, step_no=1, instruction="Select the country of marriage and a date at least 21 days from today", instruction_rw="Hitamo igihugu uzashyingirwamo n'itariki nibura iminsi 21 uhereye none", instruction_fr="Choisissez le pays du mariage et une date d'au moins 21 jours à partir d'aujourd'hui"),
+        Step(service_id=marriage_decl.id, step_no=2, instruction="Provide the wife's ID, residence, profession, occupation, phone, and email", instruction_rw="Tanga amakuru y'umugore: indangamuntu, aho atuye, umwuga, akazi, terefone, imeyili", instruction_fr="Indiquez la carte d'identité, la résidence, la profession, l'emploi, le téléphone et l'e-mail de l'épouse"),
+        Step(service_id=marriage_decl.id, step_no=3, instruction="Provide the husband's ID, residence, profession, occupation, phone, and email", instruction_rw="Tanga amakuru y'umugabo: indangamuntu, aho atuye, umwuga, akazi, terefone, imeyili", instruction_fr="Indiquez la carte d'identité, la résidence, la profession, l'emploi, le téléphone et l'e-mail de l'époux"),
+        Step(service_id=marriage_decl.id, step_no=4, instruction="Upload both birth certificates and the wife's certificate of being single", instruction_rw="Ohereza ibyemezo by'amavuko byombi n'icyemezo ko umugore atarashaka", instruction_fr="Téléversez les deux certificats de naissance et le certificat de célibat de l'épouse"),
+        Step(service_id=marriage_decl.id, step_no=5, instruction="Review the summary and proceed to payment (free on Thursdays, Rwf 50,000 other days)", instruction_rw="Reba incamake hanyuma ukomeze kwishyura (ku wa kane ni ubuntu, indi minsi ni 50,000 Rwf)", instruction_fr="Vérifiez le résumé et procédez au paiement (gratuit le jeudi, 50 000 Rwf les autres jours)"),
 
-        Step(service_id=mutuelle.id, step_no=1, instruction="Choose bulk or single application", instruction_rw="Hitamo ubusabe bw'benshi cyangwa bw'umwe"),
-        Step(service_id=mutuelle.id, step_no=2, instruction="Select the application type: individual, company, corporate, NGO, FBO, or other", instruction_rw="Hitamo ubwoko bw'usaba: umuntu ku giti cye, ikigo, koreporasiyo, NGO, FBO, cyangwa ikindi"),
-        Step(service_id=mutuelle.id, step_no=3, instruction="Download the household template", instruction_rw="Manura urupapuro rw'umuryango"),
-        Step(service_id=mutuelle.id, step_no=4, instruction="Fill in the household details (ID numbers and amount for each person) and select the coverage year", instruction_rw="Uzuza amakuru y'umuryango (indangamuntu n'amafaranga ya buri wese) uhitemo umwaka"),
-        Step(service_id=mutuelle.id, step_no=5, instruction="Upload the filled template, review the summary, and proceed to payment", instruction_rw="Ohereza urupapuro rwuzuye, urebe incamake, hanyuma ukomeze kwishyura"),
+        Step(service_id=mutuelle.id, step_no=1, instruction="Choose bulk or single application", instruction_rw="Hitamo ubusabe bw'benshi cyangwa bw'umwe", instruction_fr="Choisissez une demande en masse ou individuelle"),
+        Step(service_id=mutuelle.id, step_no=2, instruction="Select the application type: individual, company, corporate, NGO, FBO, or other", instruction_rw="Hitamo ubwoko bw'usaba: umuntu ku giti cye, ikigo, koreporasiyo, NGO, FBO, cyangwa ikindi", instruction_fr="Choisissez le type de demande : individuel, entreprise, société, ONG, OFB, ou autre"),
+        Step(service_id=mutuelle.id, step_no=3, instruction="Download the household template", instruction_rw="Manura urupapuro rw'umuryango", instruction_fr="Téléchargez le modèle de ménage"),
+        Step(service_id=mutuelle.id, step_no=4, instruction="Fill in the household details (ID numbers and amount for each person) and select the coverage year", instruction_rw="Uzuza amakuru y'umuryango (indangamuntu n'amafaranga ya buri wese) uhitemo umwaka", instruction_fr="Remplissez les détails du ménage (numéros de carte d'identité et montant pour chaque personne) et choisissez l'année de couverture"),
+        Step(service_id=mutuelle.id, step_no=5, instruction="Upload the filled template, review the summary, and proceed to payment", instruction_rw="Ohereza urupapuro rwuzuye, urebe incamake, hanyuma ukomeze kwishyura", instruction_fr="Téléversez le modèle rempli, vérifiez le résumé et procédez au paiement"),
 
-        Step(service_id=driving_license.id, step_no=1, instruction="Register for and pass the Provisional Theory Test (Rwf 5,000)", instruction_rw="Iyandikishe kandi utsinde ikizamini cy'amategeko (5,000 Rwf)"),
-        Step(service_id=driving_license.id, step_no=2, instruction="Apply for and download your e-Provisional Driving License (Rwf 10,000)", instruction_rw="Saba kandi ukurure uruhushya rw'agateganyo (10,000 Rwf)"),
-        Step(service_id=driving_license.id, step_no=3, instruction="Complete driving school training", instruction_rw="Rangiza amasomo yo kwiga gutwara imodoka"),
-        Step(service_id=driving_license.id, step_no=4, instruction="Register for and pass the Definitive (practical) Driving Test (Rwf 10,000)", instruction_rw="Iyandikishe kandi utsinde ikizamini cy'imyitozo (10,000 Rwf)"),
-        Step(service_id=driving_license.id, step_no=5, instruction="Apply for your Definitive Driving License (Rwf 50,000, processed in 14 days)", instruction_rw="Saba uruhushya rwemewe burundu (50,000 Rwf, mu minsi 14)"),
+        Step(service_id=driving_license.id, step_no=1, instruction="Register for and pass the Provisional Theory Test (Rwf 5,000)", instruction_rw="Iyandikishe kandi utsinde ikizamini cy'amategeko (5,000 Rwf)", instruction_fr="Inscrivez-vous et réussissez l'examen théorique provisoire (5 000 Rwf)"),
+        Step(service_id=driving_license.id, step_no=2, instruction="Apply for and download your e-Provisional Driving License (Rwf 10,000)", instruction_rw="Saba kandi ukurure uruhushya rw'agateganyo (10,000 Rwf)", instruction_fr="Demandez et téléchargez votre permis de conduire provisoire électronique (10 000 Rwf)"),
+        Step(service_id=driving_license.id, step_no=3, instruction="Complete driving school training", instruction_rw="Rangiza amasomo yo kwiga gutwara imodoka", instruction_fr="Terminez la formation en auto-école"),
+        Step(service_id=driving_license.id, step_no=4, instruction="Register for and pass the Definitive (practical) Driving Test (Rwf 10,000)", instruction_rw="Iyandikishe kandi utsinde ikizamini cy'imyitozo (10,000 Rwf)", instruction_fr="Inscrivez-vous et réussissez l'examen pratique définitif (10 000 Rwf)"),
+        Step(service_id=driving_license.id, step_no=5, instruction="Apply for your Definitive Driving License (Rwf 50,000, processed in 14 days)", instruction_rw="Saba uruhushya rwemewe burundu (50,000 Rwf, mu minsi 14)", instruction_fr="Demandez votre permis de conduire définitif (50 000 Rwf, traité en 14 jours)"),
     ]
 
     for step in steps:

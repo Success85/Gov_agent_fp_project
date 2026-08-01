@@ -9,6 +9,7 @@ class Service(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
     name_rw = Column(String(255), nullable=False)
+    name_fr = Column(String(255), nullable=True)
     category = Column(String(100), nullable=False, index=True)
     description = Column(Text, nullable=True)
     fee = Column(Numeric(10, 2), nullable=False, default=0.00)
