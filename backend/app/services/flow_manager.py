@@ -512,6 +512,7 @@ def generate_approval_document(db: Session, application: Application) -> Generat
     saves a record of it.
     """
     from fpdf import FPDF
+    from fpdf.enums import XPos, YPos
 
     settings = get_settings()
     storage_root = Path(settings.storage_dir)
@@ -530,11 +531,11 @@ def generate_approval_document(db: Session, application: Application) -> Generat
 
     pdf.set_font("Helvetica", "B", 18)
     pdf.set_text_color(0, 87, 183)
-    pdf.cell(0, 12, "GovAgent", ln=True, align="C")
+    pdf.cell(0, 12, "GovAgent", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
 
     pdf.set_font("Helvetica", "", 11)
     pdf.set_text_color(80, 80, 80)
-    pdf.cell(0, 8, "Official Application Approval Confirmation", ln=True, align="C")
+    pdf.cell(0, 8, "Official Application Approval Confirmation", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.ln(6)
 
     pdf.set_draw_color(200, 200, 200)
@@ -543,7 +544,7 @@ def generate_approval_document(db: Session, application: Application) -> Generat
 
     pdf.set_text_color(0, 0, 0)
     pdf.set_font("Helvetica", "B", 13)
-    pdf.cell(0, 8, service.name if service else "Government Service", ln=True)
+    pdf.cell(0, 8, service.name if service else "Government Service", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
 
     pdf.set_font("Helvetica", "", 11)
@@ -562,7 +563,7 @@ def generate_approval_document(db: Session, application: Application) -> Generat
     pdf.ln(4)
 
     pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 8, "Application Details", ln=True)
+    pdf.cell(0, 8, "Application Details", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_draw_color(220, 220, 220)
     pdf.line(15, pdf.get_y(), 195, pdf.get_y())
     pdf.ln(3)
