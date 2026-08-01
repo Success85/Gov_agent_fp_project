@@ -112,3 +112,48 @@ def validate_field(validation_type: str | None, value: str, language: str = "en"
         return True, None
 
     return validator(value, language)
+
+
+DATE_FORMATS = ["%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y", "%d %B %Y", "%B %d, %Y", "%B %d %Y"]
+
+
+def _parse_date(value: str):
+    candidate = value.strip()
+    for fmt in DATE_FORMATS:
+        try:
+            return datetime.strptime(candidate, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def validate_marriage_date_21_days(value: str, language: str = "en") -> tuple[bool, str | None]:
+    """
+    Validates that the given date is at least 21 days from today, matching
+    Rwanda's legal notice period for civil marriage declarations.
+    """
+    messages = {
+        "unparsed": {
+            "rw": "Ntibyashobotse gusoma iyi tariki. Nyamuneka wandike nk'aya: 2026-08-15.",
+            "fr": "Impossible de lire cette date. Veuillez l'\u00e9crire comme ceci\u00a0: 2026-08-15.",
+            "en": "That date couldn't be read. Please write it like this: 2026-08-15.",
+        },
+        "too_soon": {
+            "rw": "Itariki y'ubukwe igomba kuba nibura iminsi 21 uhereye uyu munsi. Nyamuneka hitamo indi tariki.",
+            "fr": "La date du mariage doit \u00eatre au moins 21 jours \u00e0 partir d'aujourd'hui. Veuillez choisir une autre date.",
+            "en": "The marriage date must be at least 21 days from today. Please choose a later date.",
+        },
+    }
+
+    parsed = _parse_date(value)
+    if parsed is None:
+        return False, messages["unparsed"].get(language, messages["unparsed"]["en"])
+
+    days_from_today = (parsed - datetime.utcnow().date()).days
+    if days_from_today < 21:
+        return False, messages["too_soon"].get(language, messages["too_soon"]["en"])
+
+    return True, None
+
+
+VALIDATORS["marriage_date_21_days"] = validate_marriage_date_21_days

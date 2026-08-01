@@ -158,7 +158,7 @@ def seed_requirements(db, services):
 
         # ---- Marriage Declaration (indices 23-38) ----
         Requirement(service_id=marriage_decl.id, name="Country of Marriage (Rwanda or Abroad)", name_rw="Igihugu Uzashyingirwamo", is_mandatory=True, needs_upload=False),
-        Requirement(service_id=marriage_decl.id, name="Marriage Date (at least 21 days from today)", name_rw="Itariki y'Ubukwe (nibura iminsi 21 uhereye none)", is_mandatory=True, needs_upload=False),
+        Requirement(service_id=marriage_decl.id, name="Marriage Date (at least 21 days from today)", validation_type="marriage_date_21_days", name_rw="Itariki y'Ubukwe (nibura iminsi 21 uhereye none)", is_mandatory=True, needs_upload=False),
         Requirement(service_id=marriage_decl.id, name="Wife's ID Type and Number", validation_type="national_id", name_rw="Ubwoko n'Inomero y'Indangamuntu y'Umugore", is_mandatory=True, needs_upload=False),
         Requirement(service_id=marriage_decl.id, name="Wife's Residence (District/Sector or Country/City)", name_rw="Aho Umugore Atuye", is_mandatory=True, needs_upload=False),
         Requirement(service_id=marriage_decl.id, name="Wife's Profession", name_rw="Umwuga w'Umugore", is_mandatory=True, needs_upload=False),
@@ -191,6 +191,26 @@ def seed_requirements(db, services):
     for requirement in requirements:
         db.add(requirement)
     db.commit()
+
+    # Conditional dependency: Mutuelle's Organization Name/TIN field is only
+    # relevant (and mandatory) when the applicant is NOT applying as an
+    # individual. Individuals never see this question; companies, corporate
+    # entities, NGOs, FBOs, and other organizations must answer it.
+    app_type_req = next(
+        (r for r in requirements if r.service_id == mutuelle.id and r.name.startswith("Application Type")),
+        None,
+    )
+    org_name_req = next(
+        (r for r in requirements if r.service_id == mutuelle.id and r.name.startswith("Organization Name")),
+        None,
+    )
+    if app_type_req and org_name_req:
+        org_name_req.depends_on_requirement_id = app_type_req.id
+        org_name_req.depends_on_values = "company,corporate,ngo,fbo,other"
+        org_name_req.is_mandatory = True
+        db.add(org_name_req)
+        db.commit()
+
     logger.info(f"Seeded {len(requirements)} requirements")
     return requirements
 

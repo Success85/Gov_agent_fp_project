@@ -14,6 +14,8 @@ class Requirement(Base):
     is_mandatory = Column(Boolean, nullable=False, default=True)
     needs_upload = Column(Boolean, nullable=False, default=False)
     validation_type = Column(String(50), nullable=True)
+    depends_on_requirement_id = Column(Integer, ForeignKey("requirements.id"), nullable=True)
+    depends_on_values = Column(String(255), nullable=True)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
 

@@ -97,7 +97,16 @@ def get_next_missing_requirement(db: Session, application: Application) -> Requi
     answered_data_ids = {d.requirement_id for d in application.data if d.value}
     uploaded_ids = {u.requirement_id for u in application.uploads if u.requirement_id is not None}
 
+    answer_by_requirement_id = {d.requirement_id: (d.value or "") for d in application.data}
+
     for requirement in requirements:
+        # Conditional requirements: skip entirely if their dependency condition isn't met
+        if requirement.depends_on_requirement_id is not None:
+            trigger_answer = answer_by_requirement_id.get(requirement.depends_on_requirement_id, "").lower()
+            trigger_values = [v.strip().lower() for v in (requirement.depends_on_values or "").split(",") if v.strip()]
+            if trigger_values and not any(trigger in trigger_answer for trigger in trigger_values):
+                continue
+
         if requirement.needs_upload:
             # Fulfilled by a real upload, OR by an explicit skip (N/A) on optional requirements
             if requirement.id not in uploaded_ids and requirement.id not in answered_data_ids:
