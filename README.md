@@ -231,7 +231,28 @@ docker compose exec backend python -m app.db.seed
 
 Re-run this any time you want to reset to a clean state (it clears and re-seeds all tables).
 
-> **Note:** since this project doesn't yet use Alembic migrations, any model/schema change requires a full reset: `docker compose down -v && docker compose up --build -d && docker compose exec backend python -m app.db.seed`.
+## Database Migrations (Alembic)
+
+Schema changes are now managed with Alembic rather than requiring a full database reset. After changing a SQLAlchemy model:
+
+```bash
+docker compose exec backend alembic revision --autogenerate -m "describe the change"
+docker compose exec backend alembic upgrade head
+```
+
+This applies the change directly, preserving existing data. To roll back the most recent migration:
+
+```bash
+docker compose exec backend alembic downgrade -1
+```
+
+To check the current migration state:
+
+```bash
+docker compose exec backend alembic current
+```
+
+A full reset (`docker compose down -v && docker compose up --build -d && docker compose exec backend python -m app.db.seed`) is still available for starting completely fresh (e.g. wiping all seeded/test data), but is no longer required for ordinary schema changes.
 
 ---
 
