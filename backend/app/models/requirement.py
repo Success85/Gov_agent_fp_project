@@ -13,6 +13,7 @@ class Requirement(Base):
     name_rw = Column(String(255), nullable=False)
     is_mandatory = Column(Boolean, nullable=False, default=True)
     needs_upload = Column(Boolean, nullable=False, default=False)
+    validation_type = Column(String(50), nullable=True)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
 

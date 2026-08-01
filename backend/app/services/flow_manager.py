@@ -12,6 +12,7 @@ from app.models.steps import Step
 from app.models.user import User
 from app.services.grounding import GroundingContext, build_grounded_prompt
 from app.services.intent import detect_intent, detect_confirmation, detect_skip
+from app.services.validation import validate_field
 from app.services.llm_client import LLMClient
 
 
@@ -238,6 +239,10 @@ def build_ai_reply(db: Session, conversation_id: int, message: str, service_id: 
 
         if requirement is not None and application is not None:
             if not requirement.needs_upload:
+                is_valid, validation_error = validate_field(requirement.validation_type, message.strip(), language)
+                if not is_valid:
+                    assistant_message = add_message(db, conversation_id, "assistant", validation_error)
+                    return assistant_message, "collecting_requirements", application.service.name, application.service_id
                 upsert_application_data(db, application.id, requirement.id, message.strip())
             elif not requirement.is_mandatory and detect_skip(message):
                 upsert_application_data(db, application.id, requirement.id, "N/A")
